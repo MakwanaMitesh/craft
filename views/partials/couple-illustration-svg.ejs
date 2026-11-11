@@ -1,0 +1,35 @@
+<%
+// Three small, original illustrations for the Anniversary card — shared
+// between the style picker, the live preview, and the recipient page.
+// `style` is one of 'handholding' | 'umbrella' | 'coffee'.
+%>
+<% if (style === 'handholding') { %>
+<svg viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="58" cy="30" r="14" fill="var(--gold)"/>
+  <path d="M58 46 C40 46 34 62 34 78 L34 100 L82 100 L82 78 C82 62 76 46 58 46Z" fill="var(--gold)"/>
+  <circle cx="102" cy="30" r="14" fill="var(--rose)"/>
+  <path d="M102 46 C84 46 78 62 78 78 L78 100 L126 100 L126 78 C126 62 120 46 102 46Z" fill="var(--rose)"/>
+  <path d="M70 78 C74 72 86 72 90 78" stroke="var(--cocoa)" stroke-width="3" stroke-linecap="round" fill="none"/>
+</svg>
+<% } else if (style === 'umbrella') { %>
+<svg viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M15 30C15 30 25 60 25 90" stroke="var(--cocoa)" stroke-width="2"/>
+  <path d="M80 10C40 10 15 32 15 32C15 32 50 42 80 42C110 42 145 32 145 32C145 32 120 10 80 10Z" fill="var(--rose)"/>
+  <rect x="78" y="10" width="4" height="82" fill="var(--cocoa)"/>
+  <circle cx="63" cy="100" r="12" fill="var(--gold)"/>
+  <path d="M63 112 C50 112 46 122 46 120 L46 120 L80 120 C80 120 76 112 63 112Z" fill="var(--gold)"/>
+  <circle cx="95" cy="100" r="12" fill="var(--blush)"/>
+  <path d="M95 112 C82 112 78 122 78 120 L78 120 L112 120 C112 120 108 112 95 112Z" fill="var(--blush)"/>
+  <path d="M30 55 C30 50 34 47 38 50 C42 47 46 50 46 55 C46 60 38 66 38 66 C38 66 30 60 30 55Z" fill="var(--rose)" opacity="0.8"/>
+  <path d="M112 50 C112 46 115 44 118 46 C121 44 124 46 124 50 C124 54 118 59 118 59 C118 59 112 54 112 50Z" fill="var(--rose)" opacity="0.8"/>
+</svg>
+<% } else { %>
+<svg viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M45 50 L45 85 C45 94 52 100 61 100 C70 100 77 94 77 85 L77 50Z" fill="var(--white-soft)" stroke="var(--gold)" stroke-width="2.5"/>
+  <path d="M77 58 C86 58 86 72 77 72" stroke="var(--gold)" stroke-width="2.5" fill="none"/>
+  <path d="M83 50 L83 85 C83 94 90 100 99 100 C108 100 115 94 115 85 L115 50Z" fill="var(--white-soft)" stroke="var(--rose)" stroke-width="2.5"/>
+  <path d="M115 58 C124 58 124 72 115 72" stroke="var(--rose)" stroke-width="2.5" fill="none"/>
+  <path d="M50 44 C48 38 52 36 50 30" stroke="var(--cocoa)" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+  <path d="M88 44 C86 38 90 36 88 30" stroke="var(--cocoa)" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+</svg>
+<% } %>

@@ -21,6 +21,14 @@ router.post(
   verifyTokenAfterUpload, // multipart body isn't parsed until multer runs, same reason every other upload route re-checks here
   surpriseCardsController.postApologyCreate
 );
+router.get('/cards/anniversary/create', surpriseCardsController.getAnniversaryCreate);
+router.post(
+  '/cards/anniversary/create',
+  cardCreateLimiter,
+  dynamicPhotoUpload.any(8), // one optional photo per timeline moment, up to 8 moments
+  verifyTokenAfterUpload,
+  surpriseCardsController.postAnniversaryCreate
+);
 
 router.get('/', maintenanceGate, publicController.getLanding);
 router.get('/demo/:templateSlug', maintenanceGate, publicController.getDemo);

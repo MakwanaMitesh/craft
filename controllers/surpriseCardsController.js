@@ -4,6 +4,7 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const { generateCardSlug } = require('../utils/tokens');
 const { storeImages } = require('../utils/mediaStorage');
+const { calcAnniversaryNumber } = require('../utils/ordinal');
 
 // This file is the home for the new "Interactive Surprise Cards" feature
 // (kept separate from the existing publicController/cardController, which
@@ -164,6 +165,145 @@ exports.postApologyCreate = catchAsync(async (req, res) => {
     recipientName: card.recipientName,
     whatsappMessage: `I owe you something... please open this 💛 ${shareUrl}`,
     whatsappPreviewTitle: `A message for ${card.recipientName} 💛`,
+  });
+});
+
+// --- Anniversary ---
+const ILLUSTRATION_STYLES = ['handholding', 'umbrella', 'coffee'];
+const MAX_TIMELINE_MOMENTS = 8;
+const MAX_LOVE_LINES = 5;
+const MAX_TIMELINE_CAPTION = 120;
+const MAX_LOVE_LINE_LENGTH = 100;
+
+exports.getAnniversaryCreate = (req, res) => {
+  res.render('public/anniversary-create', {
+    title: 'Celebrate your love story 💍',
+    illustrationStyles: ILLUSTRATION_STYLES,
+    maxTimelineMoments: MAX_TIMELINE_MOMENTS,
+    maxLoveLines: MAX_LOVE_LINES,
+  });
+};
+
+function validateAnniversaryInput(body) {
+  const errors = {};
+  const clean = (v) => (typeof v === 'string' ? v.trim() : '');
+
+  const yourName = clean(body.yourName);
+  if (!yourName) errors.yourName = 'Your name is required.';
+  else if (yourName.length > 30) errors.yourName = 'Keep your name under 30 characters.';
+
+  const theirName = clean(body.theirName);
+  if (!theirName) errors.theirName = 'Their name is required.';
+  else if (theirName.length > 30) errors.theirName = 'Keep their name under 30 characters.';
+
+  let togetherDate = null;
+  const rawDate = clean(body.togetherDate);
+  if (!rawDate) {
+    errors.togetherDate = 'Pick the date you got together.';
+  } else {
+    const parsed = new Date(rawDate);
+    if (Number.isNaN(parsed.getTime())) errors.togetherDate = 'Enter a valid date.';
+    else if (parsed > new Date()) errors.togetherDate = "That date hasn't happened yet.";
+    else togetherDate = parsed;
+  }
+
+  const illustrationStyle = clean(body.illustrationStyle);
+  if (!ILLUSTRATION_STYLES.includes(illustrationStyle)) errors.illustrationStyle = 'Choose an illustration style.';
+
+  const letterText = clean(body.letterText);
+  if (!letterText) errors.letterText = 'Write your anniversary letter.';
+  else if (letterText.length > 1200) errors.letterText = 'Keep this under 1200 characters.';
+
+  // Love lines — up to 5, blanks dropped, each line quietly capped (not
+  // spec'd as a hard validation error, just a sane ceiling against abuse).
+  const rawLoveLines = Array.isArray(body.loveLines) ? body.loveLines : body.loveLines ? [body.loveLines] : [];
+  const loveLines = rawLoveLines.map(clean).filter(Boolean).slice(0, MAX_LOVE_LINES).map((l) => l.slice(0, MAX_LOVE_LINE_LENGTH));
+
+  // Timeline — up to 8 moments; a row with neither a date/label nor a
+  // caption is just an unfilled "Add moment" row and is silently skipped.
+  // `originalIndex` is kept (not persisted — stripped in postAnniversaryCreate)
+  // so a photo uploaded as `timelinePhoto_<i>` can still be matched to the
+  // right moment after blank rows shift everything else's array position.
+  const rawDates = Array.isArray(body.timelineDate) ? body.timelineDate : body.timelineDate ? [body.timelineDate] : [];
+  const rawCaptions = Array.isArray(body.timelineCaption) ? body.timelineCaption : body.timelineCaption ? [body.timelineCaption] : [];
+  const timelineCount = Math.max(rawDates.length, rawCaptions.length);
+  const timeline = [];
+  for (let i = 0; i < Math.min(timelineCount, MAX_TIMELINE_MOMENTS); i++) {
+    const dateOrLabel = clean(rawDates[i]);
+    const caption = clean(rawCaptions[i]);
+    if (!dateOrLabel && !caption) continue;
+    if (caption.length > MAX_TIMELINE_CAPTION) {
+      errors.timeline = `Moment ${timeline.length + 1}: keep the caption under ${MAX_TIMELINE_CAPTION} characters.`;
+      break;
+    }
+    timeline.push({ originalIndex: i, dateOrLabel: dateOrLabel.slice(0, 40), caption, photo: null });
+  }
+
+  return {
+    errors,
+    values: { yourName, theirName, togetherDate, illustrationStyle, letterText, loveLines, timeline },
+  };
+}
+
+exports.postAnniversaryCreate = catchAsync(async (req, res) => {
+  const { errors, values } = validateAnniversaryInput(req.body);
+  if (Object.keys(errors).length) {
+    return res.status(422).json({ success: false, errors });
+  }
+
+  // req.files comes from multer's .any() (middleware/dynamicPhotoUpload.js's
+  // "any" variant) — an array, each tagged with which named field it came
+  // from (timelinePhoto_0, timelinePhoto_1, ...), since a moment's photo is
+  // optional and sparse (not every moment has one).
+  const files = req.files || [];
+  const photoByIndex = new Map();
+  files.forEach((file) => {
+    const match = /^timelinePhoto_(\d+)$/.exec(file.fieldname);
+    if (match) photoByIndex.set(Number(match[1]), file);
+  });
+
+  if (photoByIndex.size) {
+    const indexes = [...photoByIndex.keys()];
+    const storedUrls = await storeImages(indexes.map((i) => photoByIndex.get(i)));
+    const byOriginalIndex = new Map(values.timeline.map((moment) => [moment.originalIndex, moment]));
+    indexes.forEach((i, pos) => {
+      const moment = byOriginalIndex.get(i);
+      if (moment) moment.photo = storedUrls[pos];
+    });
+  }
+
+  const anniversaryNumber = calcAnniversaryNumber(values.togetherDate);
+  // originalIndex was only ever bookkeeping to match photos to the right
+  // moment after blank rows were dropped — not part of the stored shape.
+  const timeline = values.timeline.map(({ originalIndex, ...moment }) => moment);
+
+  const card = await SurpriseCard.create({
+    slug: generateCardSlug(),
+    type: 'anniversary',
+    senderName: values.yourName,
+    recipientName: values.theirName,
+    fields: {
+      togetherDate: values.togetherDate,
+      anniversaryNumber,
+      illustrationStyle: values.illustrationStyle,
+      letterText: values.letterText,
+      loveLines: values.loveLines,
+      timeline,
+    },
+  });
+
+  const shareUrl = `${process.env.BASE_URL}/c/${card.slug}`;
+  const resultsUrl = `${process.env.BASE_URL}/c/${card.slug}/results?key=${card.resultsKey}`;
+  const qrDataUrl = await QRCode.toDataURL(shareUrl, { width: 320, margin: 2 });
+
+  res.json({
+    success: true,
+    shareUrl,
+    resultsUrl,
+    qrDataUrl,
+    recipientName: card.recipientName,
+    whatsappMessage: `Happy anniversary, my love 💍 Open this: ${shareUrl}`,
+    whatsappPreviewTitle: `For ${card.recipientName}, with love 💍`,
   });
 });
 

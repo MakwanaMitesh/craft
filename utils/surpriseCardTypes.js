@@ -3,6 +3,6 @@
 // system under /dashboard). Same "one array" extensibility pattern as
 // utils/occasions.js: add a new type here, nowhere else needs to know the
 // full list.
-const SURPRISE_CARD_TYPES = ['apology'];
+const SURPRISE_CARD_TYPES = ['apology', 'anniversary'];
 
 module.exports = { SURPRISE_CARD_TYPES };
