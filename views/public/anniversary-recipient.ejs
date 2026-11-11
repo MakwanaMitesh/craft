@@ -68,6 +68,74 @@
     @media (prefers-reduced-motion: reduce) {
       .ann-countdown-num { transition: none; }
     }
+
+    /* ===== Screen 2: Our Story ===== */
+    #screen-our-story { overflow-y: auto; justify-content: flex-start; padding-top: 3rem; padding-bottom: 7rem; }
+    .ann-story-track {
+      position: relative;
+      width: 100%; max-width: 460px; margin: 0 auto;
+      padding-left: 36px;
+    }
+    .ann-story-track::before {
+      content: ''; position: absolute; top: 4px; bottom: 4px; left: 11px;
+      width: 1px; background: var(--gold);
+    }
+    @media (min-width: 640px) {
+      .ann-story-track { padding-left: 0; }
+      .ann-story-track::before { left: 50%; }
+    }
+    .ann-moment {
+      position: relative;
+      margin-bottom: 2rem;
+      opacity: 0; transform: translateY(24px);
+      transition: opacity 700ms var(--ease-soft), transform 700ms var(--ease-soft);
+    }
+    .ann-moment.ann-moment-visible { opacity: 1; transform: translateY(0); }
+    .ann-moment-heart {
+      position: absolute; left: -36px; top: 2px; width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--cream); border-radius: 50%;
+    }
+    @media (min-width: 640px) { .ann-moment-heart { left: 50%; transform: translateX(-50%); } }
+    .ann-moment-card {
+      background: var(--white-soft); border-radius: 14px; box-shadow: var(--shadow-soft);
+      padding: 1.1rem 1.25rem; text-align: left;
+    }
+    .ann-moment-date { font-family: var(--font-heading); font-style: italic; color: var(--gold); font-size: 1rem; margin-bottom: 0.3rem; }
+    .ann-moment-caption { font-size: 15px; line-height: 1.5; }
+    .ann-moment-photo { width: 100%; max-width: 220px; border-radius: 12px; box-shadow: var(--shadow-soft); margin-top: 0.75rem; display: block; }
+    .ann-story-end { text-align: center; font-family: var(--font-hand); font-size: 1.4rem; color: var(--gold); margin: 1rem 0 2rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ann-moment { transition: none; }
+    }
+
+    /* ===== Screen 3: Things I Love About You ===== */
+    #screen-love { overflow-y: auto; justify-content: flex-start; padding-top: 3rem; padding-bottom: 7rem; }
+    .ann-love-stack { width: 100%; max-width: 340px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.1rem; }
+    .ann-flip-card {
+      perspective: 1000px; height: 110px; cursor: pointer;
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 500ms var(--ease-soft), transform 500ms var(--ease-soft);
+    }
+    .ann-flip-card.ann-love-visible { opacity: 1; transform: translateY(0); }
+    .ann-flip-inner {
+      position: relative; width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 600ms var(--ease-soft);
+    }
+    .ann-flip-card.ann-flipped .ann-flip-inner { transform: rotateY(180deg); }
+    .ann-flip-face {
+      position: absolute; inset: 0; backface-visibility: hidden;
+      border-radius: 14px; box-shadow: var(--shadow-soft);
+      display: flex; align-items: center; justify-content: center; text-align: center; padding: 1rem;
+    }
+    .ann-flip-front { background: var(--rose); font-size: 2rem; }
+    .ann-flip-back { background: var(--white-soft); transform: rotateY(180deg); font-family: var(--font-hand); font-size: 1.3rem; color: var(--cocoa); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ann-flip-card, .ann-flip-inner { transition: none; }
+    }
   </style>
 </head>
 <body class="sc-root theme-anniversary">
@@ -103,8 +171,43 @@
       </div>
     </section>
 
-    <!-- Placeholder — Screen 2 isn't built yet; this just confirms the tap
-         registered instead of dead-ending silently. -->
+    <!-- ===== Screen 2: Our Story (skipped entirely if no moments) ===== -->
+    <section class="sc-screen" id="screen-our-story">
+      <h1 class="sc-heading an-italic" style="margin-bottom: 2rem;">Our story so far</h1>
+      <div class="ann-story-track" id="storyTrack">
+        <% (card.fields.timeline || []).forEach((moment) => { %>
+          <div class="ann-moment">
+            <div class="ann-moment-heart">💛</div>
+            <div class="ann-moment-card">
+              <% if (moment.dateOrLabel) { %><p class="ann-moment-date an-italic"><%= moment.dateOrLabel %></p><% } %>
+              <% if (moment.caption) { %><p class="ann-moment-caption"><%= moment.caption %></p><% } %>
+              <% if (moment.photo) { %><img class="ann-moment-photo" src="<%= moment.photo %>" alt="A shared memory" /><% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+      <p class="ann-story-end">...and many more to come 💛</p>
+      <button type="button" class="sc-btn" id="storyContinueBtn">Continue →</button>
+    </section>
+
+    <!-- ===== Screen 3: Things I Love About You (skipped entirely if empty) ===== -->
+    <section class="sc-screen" id="screen-love">
+      <h1 class="sc-heading an-italic" style="margin-bottom: 2rem;">Things I love about you</h1>
+      <div class="ann-love-stack" id="loveStack">
+        <% (card.fields.loveLines || []).forEach((line, i) => { %>
+          <div class="ann-flip-card" data-love-card data-index="<%= i %>">
+            <div class="ann-flip-inner">
+              <div class="ann-flip-face ann-flip-front">💛</div>
+              <div class="ann-flip-face ann-flip-back"><%= line %></div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+      <button type="button" class="sc-btn" id="loveNextBtn" style="margin-top: 1.5rem; display: none;">Next →</button>
+    </section>
+
+    <!-- Placeholder — the final screen isn't built yet; this just confirms
+         the tap registered instead of dead-ending silently. -->
     <section class="sc-screen" id="screen-next">
       <h2>…</h2>
       <p class="sc-body" style="opacity: 0.7;">More of this card is on its way. 💍</p>
@@ -186,7 +289,6 @@
     setInterval(tickCountdown, 1000);
 
     // --- Question ---
-    const screens = S.createScreenContainer(document.querySelector('.sc-screen-container'));
     const questionText = document.getElementById('questionText');
     let askedOnce = false;
 
@@ -196,9 +298,76 @@
         questionText.textContent = 'Are you sure? 🥺';
       }
     });
-    document.getElementById('annYesBtn').addEventListener('click', () => {
-      screens.next();
-    });
+
+    // --- Screen navigation, skipping Screen 2/3 entirely when this card
+    // has no timeline moments / no love lines (not just hiding empty
+    // content — the screen never shows at all, per spec). ---
+    const HAS_TIMELINE = <%= (card.fields.timeline || []).length > 0 %>;
+    const HAS_LOVE_LINES = <%= (card.fields.loveLines || []).length > 0 %>;
+    const screenOrder = ['screen-our-day'];
+    if (HAS_TIMELINE) screenOrder.push('screen-our-story');
+    if (HAS_LOVE_LINES) screenOrder.push('screen-love');
+    screenOrder.push('screen-next');
+
+    let currentScreenIndex = 0;
+    function showScreenByOrderIndex(i) {
+      currentScreenIndex = Math.min(Math.max(i, 0), screenOrder.length - 1);
+      document.querySelectorAll('.sc-screen').forEach((el) => el.classList.remove('sc-active'));
+      document.getElementById(screenOrder[currentScreenIndex]).classList.add('sc-active');
+    }
+    function goToNextScreen() {
+      showScreenByOrderIndex(currentScreenIndex + 1);
+    }
+
+    document.getElementById('annYesBtn').addEventListener('click', goToNextScreen);
+    document.getElementById('storyContinueBtn')?.addEventListener('click', goToNextScreen);
+
+    // --- Screen 2: moments fade + slide in as they scroll into view ---
+    if (HAS_TIMELINE) {
+      const moments = document.querySelectorAll('#storyTrack .ann-moment');
+      if (!prefersReducedMotion && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('ann-moment-visible');
+                io.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.25 }
+        );
+        moments.forEach((el) => io.observe(el));
+      } else {
+        moments.forEach((el) => el.classList.add('ann-moment-visible'));
+      }
+    }
+
+    // --- Screen 3: cards appear one at a time; tapping one flips it and
+    // reveals the next; once every card is flipped, show "Next →". ---
+    if (HAS_LOVE_LINES) {
+      const loveCards = Array.from(document.querySelectorAll('[data-love-card]'));
+      const loveNextBtn = document.getElementById('loveNextBtn');
+      let flippedCount = 0;
+
+      function revealLoveCard(index) {
+        if (index >= loveCards.length) return;
+        loveCards[index].classList.add('ann-love-visible');
+      }
+
+      loveCards.forEach((card, index) => {
+        card.addEventListener('click', () => {
+          if (card.classList.contains('ann-flipped')) return;
+          card.classList.add('ann-flipped');
+          flippedCount += 1;
+          revealLoveCard(index + 1);
+          if (flippedCount >= loveCards.length) loveNextBtn.style.display = '';
+        });
+      });
+
+      revealLoveCard(0);
+      loveNextBtn.addEventListener('click', goToNextScreen);
+    }
   </script>
 </body>
 </html>
