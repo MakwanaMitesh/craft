@@ -1,0 +1,26 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<p class="text-stone-500 mb-6">Pick a plan to publish "<%= card.recipientName || card.partnerName %>'s" card and get a shareable link.</p>
+
+<div class="grid sm:grid-cols-3 gap-5 max-w-4xl">
+  <% plans.forEach(plan => { %>
+    <form action="/payments/create-order" method="POST" class="card-panel flex flex-col"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <input type="hidden" name="cardId" value="<%= card._id %>" />
+      <input type="hidden" name="planId" value="<%= plan._id %>" />
+      <h3 class="font-semibold text-lg"><%= plan.name %></h3>
+      <p class="text-3xl font-semibold text-amber-600 mt-2">₹<%= plan.price %></p>
+      <ul class="mt-4 space-y-2 text-sm text-stone-500 flex-1">
+        <% (plan.features || []).forEach(f => { %>
+          <li>✓ <%= f %></li>
+        <% }) %>
+        <li>✓ Live for <%= plan.validityDays %> days</li>
+      </ul>
+      <button type="submit" class="btn-primary mt-6">Choose <%= plan.name %></button>
+    </form>
+  <% }) %>
+  <% if (!plans.length) { %>
+    <p class="text-stone-500 col-span-3">No plans available yet. Please check back soon.</p>
+  <% } %>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

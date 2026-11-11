@@ -1,0 +1,107 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<form method="GET" action="/admin/cards" class="flex flex-wrap items-end gap-3 mb-5">
+  <div>
+    <label class="label" for="search">Search</label>
+    <input class="input-field" type="text" id="search" name="search" value="<%= filters.search %>" placeholder="Recipient, owner email, slug" />
+  </div>
+  <div>
+    <label class="label" for="occasion">Occasion</label>
+    <select name="occasion" id="occasion" class="input-field max-w-[160px]">
+      <option value="all" <%= filters.occasion === 'all' ? 'selected' : '' %>>All</option>
+      <% OCCASIONS.forEach(o => { %>
+        <option value="<%= o %>" <%= filters.occasion === o ? 'selected' : '' %>><%= o[0].toUpperCase() + o.slice(1) %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label class="label" for="status">Status</label>
+    <select name="status" id="status" class="input-field max-w-[160px]">
+      <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All</option>
+      <option value="draft" <%= filters.status === 'draft' ? 'selected' : '' %>>Draft</option>
+      <option value="paid" <%= filters.status === 'paid' ? 'selected' : '' %>>Paid</option>
+    </select>
+  </div>
+  <div>
+    <label class="label" for="template">Template</label>
+    <select name="template" id="template" class="input-field max-w-[180px]">
+      <option value="">All templates</option>
+      <% templates.forEach(t => { %>
+        <option value="<%= t._id %>" <%= filters.template === String(t._id) ? 'selected' : '' %>><%= t.name %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label class="label" for="dateFrom">From</label>
+    <input class="input-field" type="date" id="dateFrom" name="dateFrom" value="<%= filters.dateFrom %>" />
+  </div>
+  <div>
+    <label class="label" for="dateTo">To</label>
+    <input class="input-field" type="date" id="dateTo" name="dateTo" value="<%= filters.dateTo %>" />
+  </div>
+  <button type="submit" class="btn-secondary">Filter</button>
+  <a
+    href="/admin/cards/export.csv?search=<%= encodeURIComponent(filters.search) %>&occasion=<%= filters.occasion %>&status=<%= filters.status %>&template=<%= filters.template %>&dateFrom=<%= filters.dateFrom %>&dateTo=<%= filters.dateTo %>"
+    class="btn-primary"
+  >Export CSV</a>
+</form>
+
+<div class="card-panel overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-stone-500 border-b border-amber-100">
+        <th class="py-2 pr-4">Customer</th>
+        <th class="py-2 pr-4">Occasion</th>
+        <th class="py-2 pr-4">Recipient</th>
+        <th class="py-2 pr-4">Template</th>
+        <th class="py-2 pr-4">Status</th>
+        <th class="py-2 pr-4">Views</th>
+        <th class="py-2 pr-4">Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% cards.forEach(card => { %>
+        <tr class="border-b border-amber-50">
+          <td class="py-2 pr-4"><%= card.user?.name %><br/><span class="text-xs text-stone-400"><%= card.user?.email %></span></td>
+          <td class="py-2 pr-4">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600">
+              <%= card.occasion[0].toUpperCase() + card.occasion.slice(1) %>
+            </span>
+          </td>
+          <td class="py-2 pr-4"><a href="/admin/cards/<%= card._id %>" class="font-semibold text-amber-700"><%= card.recipientName || card.partnerName || '—' %></a></td>
+          <td class="py-2 pr-4"><%= card.template?.name %></td>
+          <td class="py-2 pr-4">
+            <% if (card.isDisabled) { %>
+              <span class="text-xs font-semibold px-2 py-1 rounded-full bg-stone-200 text-stone-600">disabled</span>
+            <% } else { %>
+              <span class="text-xs font-semibold px-2 py-1 rounded-full <%= card.status === 'paid' ? 'bg-amber-50 text-amber-700' : 'bg-stone-100 text-stone-500' %>">
+                <%= card.status %>
+              </span>
+            <% } %>
+            <% if (card.occasion === 'proposal' && card.respondedYes) { %>
+              <span class="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">YES 💍</span>
+            <% } %>
+          </td>
+          <td class="py-2 pr-4"><%= card.totalViews %></td>
+          <td class="py-2 pr-4"><%= card.createdAt.toDateString() %></td>
+        </tr>
+      <% }) %>
+      <% if (!cards.length) { %>
+        <tr><td colspan="7" class="py-6 text-center text-stone-500">No cards match this filter.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<% if (totalPages > 1) { %>
+  <div class="flex items-center justify-center gap-2 mt-5">
+    <% for (let p = 1; p <= totalPages; p++) { %>
+      <a
+        href="/admin/cards?search=<%= encodeURIComponent(filters.search) %>&occasion=<%= filters.occasion %>&status=<%= filters.status %>&template=<%= filters.template %>&dateFrom=<%= filters.dateFrom %>&dateTo=<%= filters.dateTo %>&page=<%= p %>"
+        class="px-3 py-1.5 rounded-lg text-sm font-semibold <%= p === page ? 'bg-amber-600 text-white' : 'bg-white border border-amber-100 text-stone-600 hover:bg-amber-50' %>"
+      ><%= p %></a>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('../layouts/dashboard-foot') %>

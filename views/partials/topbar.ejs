@@ -1,0 +1,85 @@
+<header class="h-16 bg-white border-b border-amber-100 flex items-center justify-between px-4 sm:px-6">
+  <button id="sidebarToggle" class="md:hidden p-2 text-stone-600" aria-label="Toggle menu">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+  </button>
+  <h1 class="font-display text-lg font-semibold text-stone-800"><%= title %></h1>
+  <div class="flex items-center gap-3">
+    <% if (currentUser && currentUser.role === 'user') { %>
+      <div class="relative">
+        <button id="notifBellButton" class="relative p-2 text-stone-500 hover:text-amber-700" aria-label="Notifications">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" /></svg>
+          <% if (unreadNotificationCount > 0) { %>
+            <span id="notifBellBadge" class="absolute -top-0.5 -right-0.5 bg-rose-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center"><%= unreadNotificationCount > 9 ? '9+' : unreadNotificationCount %></span>
+          <% } %>
+        </button>
+        <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-amber-100 rounded-xl2 shadow-lg z-50">
+          <div id="notifList" class="divide-y divide-amber-50 text-sm">
+            <p class="p-4 text-stone-400 text-center">Loading…</p>
+          </div>
+        </div>
+      </div>
+    <% } %>
+    <span class="hidden sm:inline text-sm text-stone-500">Hi, <%= currentUser.name %></span>
+    <form action="/logout" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" /><button type="submit" class="btn-secondary text-sm px-3 py-1.5">Log out</button></form>
+  </div>
+</header>
+
+<% if (currentUser && currentUser.role === 'user') { %>
+<script>
+  (function () {
+    const button = document.getElementById('notifBellButton');
+    const dropdown = document.getElementById('notifDropdown');
+    const list = document.getElementById('notifList');
+    const badge = document.getElementById('notifBellBadge');
+    let loaded = false;
+
+    function timeAgoClient(iso) {
+      const seconds = Math.max(Math.floor((Date.now() - new Date(iso).getTime()) / 1000), 0);
+      const units = [['year', 31536000], ['month', 2592000], ['day', 86400], ['hour', 3600], ['minute', 60]];
+      for (const [label, secs] of units) {
+        const value = Math.floor(seconds / secs);
+        if (value >= 1) return `${value} ${label}${value === 1 ? '' : 's'} ago`;
+      }
+      return 'just now';
+    }
+
+    async function loadNotifications() {
+      try {
+        const res = await fetch('/api/notifications');
+        const data = await res.json();
+        if (!data.notifications.length) {
+          list.innerHTML = '<p class="p-4 text-stone-400 text-center">No notifications yet.</p>';
+          return;
+        }
+        list.innerHTML = data.notifications.map((n) => `
+          <div class="p-3 ${n.isRead ? '' : 'bg-amber-50/60'}">
+            <p class="text-stone-700">${n.message}</p>
+            <p class="text-xs text-stone-400 mt-1">${timeAgoClient(n.createdAt)}</p>
+          </div>
+        `).join('');
+      } catch (err) {
+        list.innerHTML = '<p class="p-4 text-rose-500 text-center">Couldn\'t load notifications.</p>';
+      }
+    }
+
+    button.addEventListener('click', async () => {
+      dropdown.classList.toggle('hidden');
+      if (dropdown.classList.contains('hidden')) return;
+      if (!loaded) {
+        loaded = true;
+        await loadNotifications();
+      }
+      if (badge) {
+        badge.remove();
+        fetch('/api/notifications/read', { method: 'POST', headers: { 'X-CSRF-Token': '<%= csrfToken %>' } }).catch(() => {});
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!dropdown.contains(e.target) && e.target !== button && !button.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+  })();
+</script>
+<% } %>

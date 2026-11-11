@@ -1,0 +1,179 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<form method="GET" action="/admin/dashboard" class="flex flex-wrap items-end gap-3 mb-6">
+  <div>
+    <label class="label" for="range">Date range</label>
+    <select name="range" id="range" class="input-field max-w-[160px]" onchange="this.form.submit()">
+      <option value="today" <%= range === 'today' ? 'selected' : '' %>>Today</option>
+      <option value="7d" <%= range === '7d' ? 'selected' : '' %>>Last 7 days</option>
+      <option value="30d" <%= range === '30d' ? 'selected' : '' %>>Last 30 days</option>
+      <option value="month" <%= range === 'month' ? 'selected' : '' %>>This month</option>
+      <option value="custom" <%= range === 'custom' ? 'selected' : '' %>>Custom</option>
+    </select>
+  </div>
+  <% if (range === 'custom') { %>
+    <div>
+      <label class="label" for="from">From</label>
+      <input class="input-field" type="date" id="from" name="from" value="<%= rangeFrom %>" />
+    </div>
+    <div>
+      <label class="label" for="to">To</label>
+      <input class="input-field" type="date" id="to" name="to" value="<%= rangeTo %>" />
+    </div>
+    <button type="submit" class="btn-secondary">Apply</button>
+  <% } %>
+</form>
+
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+  <% stats.forEach(s => { %>
+    <div class="card-panel">
+      <p class="text-sm text-stone-500"><%= s.label %></p>
+      <p class="text-3xl font-semibold mt-1"><%= s.emoji ? s.emoji + ' ' : '' %><%= s.prefix || '' %><%= s.value.toLocaleString('en-IN') %></p>
+      <% if (s.change !== null && s.change !== undefined) { %>
+        <p class="text-xs font-semibold mt-1 <%= s.change >= 0 ? 'text-emerald-600' : 'text-rose-600' %>">
+          <%= s.change >= 0 ? '↑' : '↓' %> <%= Math.abs(s.change) %>% vs previous period
+        </p>
+      <% } %>
+    </div>
+  <% }) %>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6 mb-6">
+  <div class="card-panel lg:col-span-2">
+    <h3 class="font-semibold mb-4">Revenue — last 30 days</h3>
+    <canvas id="revenueChart" height="90"></canvas>
+  </div>
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">Cards by occasion</h3>
+    <canvas id="occasionChart" height="160"></canvas>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mb-6">
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">Card views — last 30 days</h3>
+    <canvas id="viewsChart" height="90"></canvas>
+  </div>
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">New users — last 30 days</h3>
+    <canvas id="newUsersChart" height="90"></canvas>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mb-6">
+  <div class="card-panel overflow-x-auto">
+    <h3 class="font-semibold mb-4">Latest cards</h3>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-stone-500 border-b border-amber-100">
+          <th class="py-2 pr-4">Owner</th>
+          <th class="py-2 pr-4">Template</th>
+          <th class="py-2 pr-4">Status</th>
+          <th class="py-2 pr-4">Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% latestCards.forEach(c => { %>
+          <tr class="border-b border-amber-50">
+            <td class="py-2 pr-4"><a href="/admin/cards/<%= c._id %>" class="font-semibold text-amber-700"><%= c.user?.name %></a></td>
+            <td class="py-2 pr-4"><%= c.template?.name %></td>
+            <td class="py-2 pr-4"><%= c.isDisabled ? 'disabled' : c.status %></td>
+            <td class="py-2 pr-4"><%= c.createdAt.toDateString() %></td>
+          </tr>
+        <% }) %>
+        <% if (!latestCards.length) { %>
+          <tr><td colspan="4" class="py-6 text-center text-stone-500">No cards yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card-panel overflow-x-auto">
+    <h3 class="font-semibold mb-4">Most viewed cards</h3>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-stone-500 border-b border-amber-100">
+          <th class="py-2 pr-4">Owner</th>
+          <th class="py-2 pr-4">Template</th>
+          <th class="py-2 pr-4">Views</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% mostViewedCards.forEach(c => { %>
+          <tr class="border-b border-amber-50">
+            <td class="py-2 pr-4"><a href="/admin/cards/<%= c._id %>" class="font-semibold text-amber-700"><%= c.user?.name %></a></td>
+            <td class="py-2 pr-4"><%= c.template?.name %></td>
+            <td class="py-2 pr-4"><%= c.totalViews %></td>
+          </tr>
+        <% }) %>
+        <% if (!mostViewedCards.length) { %>
+          <tr><td colspan="3" class="py-6 text-center text-stone-500">No views yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card-panel overflow-x-auto">
+  <h3 class="font-semibold mb-4">Latest orders</h3>
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-stone-500 border-b border-amber-100">
+        <th class="py-2 pr-4">Customer</th>
+        <th class="py-2 pr-4">Occasion</th>
+        <th class="py-2 pr-4">Card</th>
+        <th class="py-2 pr-4">Plan</th>
+        <th class="py-2 pr-4">Amount</th>
+        <th class="py-2 pr-4">Status</th>
+        <th class="py-2 pr-4">Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% latestOrders.forEach(o => { %>
+        <tr class="border-b border-amber-50">
+          <td class="py-2 pr-4"><%= o.user?.name %></td>
+          <td class="py-2 pr-4"><%= o.card?.occasion ? o.card.occasion[0].toUpperCase() + o.card.occasion.slice(1) : '—' %></td>
+          <td class="py-2 pr-4"><%= o.card?.recipientName || o.card?.partnerName %></td>
+          <td class="py-2 pr-4"><%= o.plan?.name %></td>
+          <td class="py-2 pr-4">₹<%= o.amount %></td>
+          <td class="py-2 pr-4">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= o.status === 'paid' ? 'bg-amber-50 text-amber-700' : o.status === 'failed' ? 'bg-rose-50 text-rose-600' : 'bg-stone-100 text-stone-500' %>">
+              <%= o.status %>
+            </span>
+          </td>
+          <td class="py-2 pr-4"><%= o.createdAt.toDateString() %></td>
+        </tr>
+      <% }) %>
+      <% if (!latestOrders.length) { %>
+        <tr><td colspan="7" class="py-6 text-center text-stone-500">No orders yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  function lineChart(id, labels, values, color, bg) {
+    new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels, datasets: [{ data: values, borderColor: color, backgroundColor: bg, fill: true, tension: 0.3, pointRadius: 0 }] },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+    });
+  }
+
+  lineChart('revenueChart', <%- JSON.stringify(chartLabels) %>, <%- JSON.stringify(chartValues) %>, '#B45309', 'rgba(180, 83, 9, 0.12)');
+  lineChart('viewsChart', <%- JSON.stringify(viewsLabels) %>, <%- JSON.stringify(viewsValues) %>, '#E11D48', 'rgba(225, 29, 72, 0.12)');
+  lineChart('newUsersChart', <%- JSON.stringify(newUsersLabels) %>, <%- JSON.stringify(newUsersValues) %>, '#0EA5E9', 'rgba(14, 165, 233, 0.12)');
+
+  new Chart(document.getElementById('occasionChart'), {
+    type: 'doughnut',
+    data: {
+      labels: <%- JSON.stringify(occasionLabels) %>,
+      datasets: [{ data: <%- JSON.stringify(occasionValues) %>, backgroundColor: ['#B45309', '#E11D48', '#0EA5E9', '#16A34A'] }],
+    },
+    options: { plugins: { legend: { position: 'bottom' } } },
+  });
+</script>
+
+<%- include('../layouts/dashboard-foot') %>

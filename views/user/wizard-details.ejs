@@ -1,0 +1,38 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<%- include('../partials/wizard-steps', { step }) %>
+
+<div class="max-w-xl card-panel">
+  <form action="/dashboard/cards/<%= card._id %>/build/details" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div>
+      <label class="label" for="recipientName">Recipient's name</label>
+      <input class="input-field" type="text" id="recipientName" name="recipientName" value="<%= card.recipientName || '' %>" required />
+    </div>
+    <div>
+      <label class="label" for="nickname">Nickname (optional)</label>
+      <input class="input-field" type="text" id="nickname" name="nickname" value="<%= card.nickname || '' %>" />
+    </div>
+    <div>
+      <label class="label" for="birthdayDate">Birthday date (optional)</label>
+      <input
+        class="input-field" type="date" id="birthdayDate" name="birthdayDate"
+        value="<%= card.birthdayDate ? card.birthdayDate.toISOString().slice(0, 10) : '' %>"
+      />
+    </div>
+    <div>
+      <label class="label" for="senderName">Your name</label>
+      <input class="input-field" type="text" id="senderName" name="senderName" value="<%= card.senderName || '' %>" required />
+    </div>
+    <div>
+      <label class="label" for="candleCount">Number of candles (1-20)</label>
+      <input class="input-field" type="number" id="candleCount" name="candleCount" min="1" max="20" value="<%= card.candleCount || 1 %>" />
+    </div>
+
+    <div class="flex items-center justify-between pt-2">
+      <a href="/dashboard/cards/<%= card._id %>/build/template" class="btn-secondary">&larr; Back</a>
+      <button type="submit" class="btn-primary">Continue</button>
+    </div>
+  </form>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

@@ -1,0 +1,54 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<%- include('../partials/wizard-steps-proposal', { step }) %>
+
+<div class="max-w-xl card-panel">
+  <form action="/dashboard/cards/<%= card._id %>/build/proposal/question" method="POST" class="space-y-4" id="questionForm"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label class="label mb-1 block">Choose a question, or write your own</label>
+
+    <% presets.forEach(preset => { %>
+      <label class="flex items-center gap-3 p-3 rounded-lg border border-stone-200 cursor-pointer">
+        <input type="radio" name="questionChoice" value="<%= preset %>" data-preset <%= card.question === preset ? 'checked' : '' %> />
+        <span class="text-sm font-semibold"><%= preset %></span>
+      </label>
+    <% }) %>
+
+    <label class="flex items-center gap-3 p-3 rounded-lg border border-stone-200 cursor-pointer">
+      <input type="radio" name="questionChoice" value="custom" id="customChoice" <%= !presets.includes(card.question) && card.question ? 'checked' : '' %> />
+      <span class="text-sm font-semibold">Write my own</span>
+    </label>
+    <input
+      class="input-field" type="text" id="customQuestion" name="customQuestion" maxlength="500"
+      placeholder="Type your question..."
+      value="<%= !presets.includes(card.question) ? (card.question || '') : '' %>"
+    />
+
+    <input type="hidden" name="question" id="question" />
+
+    <div class="flex items-center justify-between pt-2">
+      <a href="/dashboard/cards/<%= card._id %>/build/proposal/names" class="btn-secondary">&larr; Back</a>
+      <button type="submit" class="btn-primary">Continue</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const form = document.getElementById('questionForm');
+  const customInput = document.getElementById('customQuestion');
+  const customRadio = document.getElementById('customChoice');
+
+  customInput.addEventListener('focus', () => { customRadio.checked = true; });
+
+  form.addEventListener('submit', (e) => {
+    const choice = form.querySelector('input[name="questionChoice"]:checked');
+    const value = choice && choice.value === 'custom' ? customInput.value.trim() : (choice ? choice.value : '');
+    if (!value) {
+      e.preventDefault();
+      alert('Please choose or write a question.');
+      return;
+    }
+    document.getElementById('question').value = value;
+  });
+</script>
+
+<%- include('../layouts/dashboard-foot') %>

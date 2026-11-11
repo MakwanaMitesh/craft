@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&family=Caveat:wght@500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    body { margin: 0; }
+    .sg-section { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .sg-section + .sg-section { border-top: 1px solid rgba(74,59,54,0.08); }
+    .sg-swatches { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .sg-swatch { width: 120px; }
+    .sg-swatch-chip { height: 72px; border-radius: 14px; box-shadow: var(--shadow-soft); margin-bottom: 0.5rem; }
+    .sg-swatch code { font-size: 12px; color: var(--cocoa); opacity: 0.7; }
+    .sg-grid { display: grid; gap: 1.5rem; }
+    @media (min-width: 640px) { .sg-grid-2 { grid-template-columns: 1fr 1fr; } }
+    .sg-demo-box {
+      border: 1px dashed rgba(74,59,54,0.18);
+      border-radius: var(--radius-card);
+      padding: 2rem 1rem;
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      min-height: 220px;
+      justify-content: center;
+    }
+    .sg-label { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rose); font-weight: 600; margin-bottom: 0.25rem; }
+  </style>
+</head>
+<body class="sc-root">
+
+  <header class="sg-section" style="padding-top: 4rem;">
+    <p class="sg-label">Design system</p>
+    <h1>Interactive Surprise Cards</h1>
+    <p class="sc-body" style="max-width: 520px; margin-top: 0.75rem; opacity: 0.85;">
+      A premium, soft, stationery-inspired look shared by every card type. This page is a living reference — not a card itself.
+    </p>
+  </header>
+
+  <!-- ===== Typography ===== -->
+  <section class="sg-section">
+    <p class="sg-label">Typography</p>
+    <h1 style="margin-bottom: 0.5rem;">Fraunces 700 — Headline</h1>
+    <h2 style="margin-bottom: 1.25rem;">Fraunces 500 — Subheading</h2>
+    <p class="sc-body" style="margin-bottom: 1.25rem;">
+      DM Sans — This is body text at the default size. It should stay comfortable to read on a phone screen, with generous line height and never crowd the page. 400/500/600 weights are available for emphasis.
+    </p>
+    <p class="sc-hand" style="font-size: 1.75rem; margin: 0;">Caveat — for letters &amp; signatures, with love 💛</p>
+  </section>
+
+  <!-- ===== Colors ===== -->
+  <section class="sg-section">
+    <p class="sg-label">Color palette</p>
+    <div class="sg-swatches">
+      <div class="sg-swatch"><div class="sg-swatch-chip" style="background: var(--cream); border: 1px solid rgba(74,59,54,0.1);"></div><strong>Cream</strong><br/><code>--cream #FFF8F0</code></div>
+      <div class="sg-swatch"><div class="sg-swatch-chip" style="background: var(--blush);"></div><strong>Blush</strong><br/><code>--blush #F8D7DA</code></div>
+      <div class="sg-swatch"><div class="sg-swatch-chip" style="background: var(--rose);"></div><strong>Rose</strong><br/><code>--rose #E07A8B</code></div>
+      <div class="sg-swatch"><div class="sg-swatch-chip" style="background: var(--gold);"></div><strong>Gold</strong><br/><code>--gold #D4A373</code></div>
+      <div class="sg-swatch"><div class="sg-swatch-chip" style="background: var(--cocoa);"></div><strong>Cocoa</strong><br/><code>--cocoa #4A3B36</code></div>
+      <div class="sg-swatch"><div class="sg-swatch-chip" style="background: var(--white-soft); border: 1px solid rgba(74,59,54,0.1);"></div><strong>White soft</strong><br/><code>--white-soft #FFFDFB</code></div>
+    </div>
+  </section>
+
+  <!-- ===== Buttons & cards ===== -->
+  <section class="sg-section">
+    <p class="sg-label">Buttons</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+      <button type="button" class="sc-btn">Continue</button>
+      <button type="button" class="sc-btn sc-btn-gold">Choose this</button>
+      <button type="button" class="sc-btn sc-btn-outline">Replay</button>
+    </div>
+
+    <p class="sg-label">Card + paper texture</p>
+    <div class="sc-card sc-paper" style="max-width: 360px;">
+      <h2 style="margin-bottom: 0.5rem;">A little note</h2>
+      <p class="sc-hand" style="font-size: 1.4rem; margin: 0;">Rounded corners, a soft shadow, and the faintest hint of paper grain underneath.</p>
+    </div>
+  </section>
+
+  <!-- ===== 1. ScreenContainer ===== -->
+  <section class="sg-section">
+    <p class="sg-label">1. ScreenContainer</p>
+    <div class="sg-demo-box" id="demo-screens" style="min-height: 260px;">
+      <div class="sc-screen-container" style="position: absolute; inset: 0;">
+        <div class="sc-screen sc-active">
+          <h2>Screen one</h2>
+          <button type="button" class="sc-btn" id="screen-next-1">Next</button>
+        </div>
+        <div class="sc-screen">
+          <h2>Screen two</h2>
+          <button type="button" class="sc-btn" id="screen-next-2">Next</button>
+        </div>
+        <div class="sc-screen">
+          <h2>Screen three 🎉</h2>
+          <button type="button" class="sc-btn sc-btn-outline" id="screen-restart">Restart</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2. TapToContinue + 4. Confetti ===== -->
+  <section class="sg-section">
+    <div class="sg-grid sg-grid-2">
+      <div>
+        <p class="sg-label">2. TapToContinue</p>
+        <div class="sg-demo-box">
+          <button type="button" class="sc-btn sc-tap-continue" id="demo-tap">Tap to open</button>
+        </div>
+      </div>
+      <div>
+        <p class="sg-label">4. Confetti</p>
+        <div class="sg-demo-box">
+          <button type="button" class="sc-btn" id="demo-confetti">Burst confetti</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. FloatingHearts ===== -->
+  <section class="sg-section">
+    <p class="sg-label">3. FloatingHearts</p>
+    <div class="sg-demo-box" style="min-height: 240px;">
+      <div class="sc-hearts-layer" id="hearts-layer"></div>
+      <button type="button" class="sc-btn sc-btn-outline" id="hearts-toggle" style="z-index: 1;">Toggle hearts</button>
+    </div>
+  </section>
+
+  <!-- ===== 5. EnvelopeLetter ===== -->
+  <section class="sg-section">
+    <p class="sg-label">5. EnvelopeLetter</p>
+    <div class="sg-demo-box" style="min-height: 340px;">
+      <div class="sc-envelope-wrap" id="envelope">
+        <div class="sc-envelope-back"></div>
+        <div class="sc-envelope-flap"></div>
+      </div>
+      <div class="sc-letter" id="letter">
+        <p class="sc-letter-text" id="letter-text"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 6. PhotoPolaroids ===== -->
+  <section class="sg-section">
+    <p class="sg-label">6. PhotoPolaroids <span style="font-weight: 400; text-transform: none; opacity: 0.7;">(tap or swipe)</span></p>
+    <div class="sg-demo-box" style="min-height: 360px;">
+      <div class="sc-polaroid-stack" id="polaroids">
+        <div class="sc-polaroid">
+          <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#F8D7DA"/><circle cx="100" cy="85" r="40" fill="#E07A8B"/><rect x="60" y="130" width="80" height="14" rx="7" fill="#D4A373"/></svg>
+          <p class="sc-polaroid-caption">First hello</p>
+        </div>
+        <div class="sc-polaroid">
+          <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#FFF8F0"/><path d="M100 160 C60 130 30 100 30 70 C30 45 50 30 75 30 C88 30 98 38 100 48 C102 38 112 30 125 30 C150 30 170 45 170 70 C170 100 140 130 100 160Z" fill="#E07A8B"/></svg>
+          <p class="sc-polaroid-caption">That day</p>
+        </div>
+        <div class="sc-polaroid">
+          <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#D4A373" fill-opacity="0.25"/><rect x="40" y="40" width="120" height="120" rx="16" fill="#D4A373"/></svg>
+          <p class="sc-polaroid-caption">Always</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 7. SoundToggle ===== -->
+  <section class="sg-section">
+    <p class="sg-label">7. SoundToggle <span style="font-weight: 400; text-transform: none; opacity: 0.7;">(fixed bottom-right on real cards)</span></p>
+    <div class="sg-demo-box">
+      <p class="sc-body" style="opacity: 0.8;">Starts muted; the icon flips after the first tap.</p>
+      <button type="button" class="sc-sound-toggle" id="demo-sound" style="position: static;">🔇</button>
+    </div>
+  </section>
+
+  <!-- ===== 8. ShareScreen ===== -->
+  <section class="sg-section" style="padding-bottom: 5rem;">
+    <p class="sg-label">8. ShareScreen</p>
+    <div class="sc-card" style="max-width: 420px; margin: 0 auto; text-align: center;">
+      <h2 style="margin-bottom: 1rem;">It's ready to send 💌</h2>
+      <p class="sc-body" style="word-break: break-all; opacity: 0.8;"><%= demoShareUrl %></p>
+      <div class="sc-share-row" style="margin: 1.25rem 0;">
+        <button type="button" class="sc-btn" id="share-copy">Copy link</button>
+        <a href="#" class="sc-btn sc-btn-gold" id="share-whatsapp">Send on WhatsApp</a>
+        <a href="#" class="sc-btn sc-btn-outline" id="share-preview">Preview</a>
+      </div>
+      <div class="sc-qr-box">
+        <img src="<%= qrDataUrl %>" alt="QR code to the card" />
+      </div>
+    </div>
+  </section>
+
+  <script src="/js/cardComponents.js"></script>
+  <script>
+    const S = window.SurpriseCard;
+
+    // 1. ScreenContainer
+    const screens = S.createScreenContainer(document.getElementById('demo-screens'));
+    document.getElementById('screen-next-1').addEventListener('click', () => screens.next());
+    document.getElementById('screen-next-2').addEventListener('click', () => screens.next());
+    document.getElementById('screen-restart').addEventListener('click', () => screens.goTo(0));
+
+    // 2. TapToContinue
+    S.wireTapToContinue(document.getElementById('demo-tap'), () => {
+      document.getElementById('demo-tap').textContent = 'Opened ✨';
+    });
+
+    // 3. FloatingHearts
+    let heartsHandle = null;
+    document.getElementById('hearts-toggle').addEventListener('click', () => {
+      const layer = document.getElementById('hearts-layer');
+      if (heartsHandle) {
+        heartsHandle.stop();
+        heartsHandle = null;
+      } else {
+        heartsHandle = S.startFloatingHearts(layer, { color: '#E07A8B' });
+      }
+    });
+
+    // 4. Confetti
+    document.getElementById('demo-confetti').addEventListener('click', () => S.burstConfetti());
+
+    // 5. EnvelopeLetter
+    S.createEnvelopeLetter({
+      wrapEl: document.getElementById('envelope'),
+      letterEl: document.getElementById('letter'),
+      textEl: document.getElementById('letter-text'),
+      text: 'Happy birthday to someone\nwho makes every day\na little brighter. 🤍',
+    });
+
+    // 6. PhotoPolaroids
+    S.createPhotoPolaroids(document.getElementById('polaroids'));
+
+    // 7. SoundToggle (no real audio element in this demo — just the icon state)
+    S.createSoundToggle(document.getElementById('demo-sound'), null);
+
+    // 8. ShareScreen
+    S.wireShareScreen({
+      copyBtn: document.getElementById('share-copy'),
+      whatsappBtn: document.getElementById('share-whatsapp'),
+      previewBtn: document.getElementById('share-preview'),
+      shareUrl: <%- JSON.stringify(demoShareUrl) %>,
+      whatsappText: 'I made something for you 💌',
+    });
+  </script>
+</body>
+</html>

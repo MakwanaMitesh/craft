@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&family=Caveat:wght@500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    /* --- Apology theme override: everything else is inherited from cards.css --- */
+    .theme-apology {
+      --rose: #C97B8A; /* muted rose — buttons/accent for this card only */
+      --dur-screen: 720ms;   /* 600ms base x 1.2 = 20% slower, calmer feel */
+      --dur-envelope: 840ms; /* 700ms base x 1.2 */
+      --dur-letter: 600ms;   /* 500ms base x 1.2 */
+      --dur-tap-pulse: 2.64s;/* 2.2s base x 1.2 */
+      background: linear-gradient(160deg, #E6DEF7, var(--cream) 65%);
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .ap-wrap { max-width: 1040px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .ap-hero { text-align: center; max-width: 560px; margin: 0 auto 2.5rem; }
+    .ap-hero p { opacity: 0.8; margin-top: 0.75rem; }
+
+    .ap-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+    @media (min-width: 900px) {
+      .ap-grid { grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+      .ap-preview-col { position: sticky; top: 2rem; }
+    }
+
+    .ap-field { margin-bottom: 1.5rem; }
+    .ap-label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 15px; }
+    .ap-hint { font-size: 13px; opacity: 0.65; margin-top: 0.3rem; }
+    .ap-error { font-size: 13px; color: #B3404A; margin-top: 0.3rem; display: none; }
+    .ap-error.ap-show { display: block; }
+    .ap-input, .ap-textarea {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 16px;
+      padding: 0.8rem 1rem;
+      border-radius: 14px;
+      border: 1.5px solid rgba(74,59,54,0.15);
+      background: var(--white-soft);
+      color: var(--cocoa);
+      box-sizing: border-box;
+      transition: border-color 200ms var(--ease-soft);
+    }
+    .ap-input:focus, .ap-textarea:focus { outline: none; border-color: var(--rose); }
+    .ap-textarea { resize: vertical; min-height: 90px; }
+    .ap-count { font-size: 12px; opacity: 0.55; text-align: right; margin-top: 0.25rem; }
+
+    .ap-moods { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .ap-mood-option { cursor: pointer; text-align: center; }
+    .ap-mood-option input { position: absolute; opacity: 0; pointer-events: none; }
+    .ap-mood-card {
+      width: 92px; padding: 0.75rem 0.5rem;
+      border-radius: 16px; border: 2px solid transparent;
+      background: var(--white-soft); box-shadow: var(--shadow-soft);
+      transition: border-color 200ms var(--ease-soft), transform 200ms var(--ease-soft);
+    }
+    .ap-mood-option input:checked + .ap-mood-card {
+      border-color: var(--rose);
+      transform: translateY(-3px);
+    }
+    .ap-mood-card svg { width: 56px; height: 56px; }
+    .ap-mood-card span { display: block; font-size: 12px; margin-top: 0.4rem; font-weight: 500; }
+
+    .ap-question-choices { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.75rem; }
+    .ap-chip {
+      font-family: var(--font-body); font-size: 14px; font-weight: 500;
+      padding: 0.5rem 1rem; border-radius: 999px;
+      border: 1.5px solid rgba(74,59,54,0.15); background: var(--white-soft);
+      cursor: pointer; transition: all 200ms var(--ease-soft);
+    }
+    .ap-chip.ap-chip-active { background: var(--rose); border-color: var(--rose); color: #fff; }
+
+    .ap-photo-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .ap-photo-slot {
+      width: 84px; height: 84px; border-radius: 14px;
+      border: 1.5px dashed rgba(74,59,54,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: var(--rose); cursor: pointer; position: relative; overflow: hidden;
+      background: var(--white-soft);
+    }
+    .ap-photo-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ap-photo-slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+    /* --- Live preview panel (phone-mockup style) --- */
+    .ap-phone {
+      width: 100%; max-width: 300px; margin: 0 auto;
+      background: #1c1917; border-radius: 2.25rem; padding: 12px;
+      box-shadow: var(--shadow-soft);
+    }
+    .ap-phone-screen {
+      border-radius: 1.75rem; overflow: hidden; min-height: 480px;
+      background: linear-gradient(160deg, #E6DEF7, var(--cream) 70%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2rem 1.25rem; text-align: center; gap: 0.75rem;
+    }
+    .ap-phone-mood svg { width: 84px; height: 84px; }
+    .ap-phone-dear { font-weight: 600; opacity: 0.85; }
+    .ap-phone-sorry { font-family: var(--font-hand); font-size: 1.3rem; line-height: 1.45; max-height: 140px; overflow: hidden; }
+
+    /* --- Submit --- */
+    .ap-submit-row { margin-top: 1rem; text-align: center; }
+
+    /* --- Full-screen overlay (loading + share) --- */
+    .ap-overlay { position: fixed; inset: 0; z-index: 50; display: none; }
+    .ap-overlay.ap-overlay-visible { display: block; }
+
+    .ap-wave-wrap { position: relative; width: 140px; height: 140px; }
+    .ap-wave-paw {
+      position: absolute; top: 10px; right: -6px; width: 34px; height: 34px;
+      transform-origin: 70% 90%;
+      animation: ap-wave 1.1s ease-in-out infinite;
+    }
+    @keyframes ap-wave {
+      0%, 100% { transform: rotate(-12deg); }
+      50% { transform: rotate(18deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ap-wave-paw { animation: none; }
+    }
+  </style>
+</head>
+<body class="sc-root theme-apology">
+
+  <div class="ap-wrap">
+    <div class="ap-hero">
+      <h1>Say sorry the right way 💛</h1>
+      <p class="sc-body">Send a heartfelt apology they can open on their phone.</p>
+    </div>
+
+    <form id="apologyForm" class="ap-grid" novalidate>
+      <div class="ap-form-col">
+
+        <div class="ap-field">
+          <label class="ap-label" for="theirName">Their name</label>
+          <input class="ap-input" type="text" id="theirName" name="theirName" maxlength="30" required />
+          <p class="ap-error" data-error-for="theirName"></p>
+        </div>
+
+        <div class="ap-field">
+          <label class="ap-label" for="yourName">Your name</label>
+          <input class="ap-input" type="text" id="yourName" name="yourName" maxlength="30" required />
+          <p class="ap-error" data-error-for="yourName"></p>
+        </div>
+
+        <div class="ap-field">
+          <label class="ap-label">Mood character</label>
+          <div class="ap-moods">
+            <% const moodLabels = { bunny: 'Shy bunny', teddy: 'Sad teddy', cat: 'Cat & flowers' }; %>
+            <% moodCharacters.forEach((m, i) => { %>
+              <label class="ap-mood-option">
+                <input type="radio" name="moodCharacter" value="<%= m %>" <%= i === 0 ? 'checked' : '' %> required />
+                <div class="ap-mood-card">
+                  <%- include('../partials/mood-character-svg', { mood: m }) %>
+                  <span><%= moodLabels[m] %></span>
+                </div>
+              </label>
+            <% }) %>
+          </div>
+          <p class="ap-error" data-error-for="moodCharacter"></p>
+        </div>
+
+        <div class="ap-field">
+          <label class="ap-label" for="sorryText">I'm sorry for...</label>
+          <textarea class="ap-textarea" id="sorryText" name="sorryText" maxlength="500" placeholder="Be honest and specific..." required></textarea>
+          <p class="ap-count" data-count-for="sorryText">0 / 500</p>
+          <p class="ap-error" data-error-for="sorryText"></p>
+        </div>
+
+        <div class="ap-field">
+          <label class="ap-label" for="whyMatterText">Why you matter to me <span class="ap-hint">(optional)</span></label>
+          <textarea class="ap-textarea" id="whyMatterText" name="whyMatterText" maxlength="500"></textarea>
+          <p class="ap-count" data-count-for="whyMatterText">0 / 500</p>
+          <p class="ap-error" data-error-for="whyMatterText"></p>
+        </div>
+
+        <div class="ap-field">
+          <label class="ap-label">Photos <span class="ap-hint">(optional, up to 3)</span></label>
+          <div class="ap-photo-row" id="photoRow">
+            <% for (let i = 0; i < 3; i++) { %>
+              <label class="ap-photo-slot" data-slot="<%= i %>">
+                <span class="ap-photo-plus">+</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" data-slot-input="<%= i %>" />
+              </label>
+            <% } %>
+          </div>
+          <p class="ap-error" data-error-for="photos"></p>
+        </div>
+
+        <div class="ap-field">
+          <label class="ap-label">Final question</label>
+          <div class="ap-question-choices" id="questionChoices">
+            <% finalQuestionPresets.forEach((q, i) => { %>
+              <button type="button" class="ap-chip <%= i === 0 ? 'ap-chip-active' : '' %>" data-question="<%= q %>"><%= q %></button>
+            <% }) %>
+            <button type="button" class="ap-chip" id="customQuestionChip" data-question="__custom__">Custom…</button>
+          </div>
+          <input class="ap-input" type="text" id="customQuestionInput" placeholder="Type your own question" maxlength="100" style="display:none; margin-bottom: 0.5rem;" />
+          <input type="hidden" name="finalQuestion" id="finalQuestion" value="<%= finalQuestionPresets[0] %>" />
+          <p class="ap-error" data-error-for="finalQuestion"></p>
+        </div>
+
+        <div class="ap-field">
+          <label class="ap-label" for="forgiveMessage">Message if they forgive you <span class="ap-hint">(optional)</span></label>
+          <textarea class="ap-textarea" id="forgiveMessage" name="forgiveMessage" maxlength="300" placeholder="What you want them to see after they say yes"></textarea>
+          <p class="ap-count" data-count-for="forgiveMessage">0 / 300</p>
+          <p class="ap-error" data-error-for="forgiveMessage"></p>
+        </div>
+
+        <div class="ap-submit-row">
+          <button type="submit" class="sc-btn" id="submitBtn">Send my apology 💌</button>
+        </div>
+      </div>
+
+      <div class="ap-preview-col">
+        <p class="ap-label" style="text-align:center; margin-bottom: 0.75rem;">Live preview</p>
+        <div class="ap-phone">
+          <div class="ap-phone-screen">
+            <div class="ap-phone-mood" id="previewMood">
+              <%- include('../partials/mood-character-svg', { mood: moodCharacters[0] }) %>
+            </div>
+            <p class="ap-phone-dear" id="previewDear">Dear Them,</p>
+            <p class="ap-phone-sorry" id="previewSorry">I'm sorry for...</p>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== Full-screen overlay: loading -> share ===== -->
+  <div class="ap-overlay sc-screen-container" id="overlay">
+    <div class="sc-screen" id="screen-loading">
+      <div class="ap-wave-wrap" id="waveCharacter"></div>
+      <h2>Sending with care…</h2>
+    </div>
+
+    <div class="sc-screen" id="screen-share">
+      <div class="sc-card sc-paper" style="max-width: 420px;">
+        <h2 style="margin-bottom: 0.5rem;">It's ready to send 💛</h2>
+        <p class="sc-body" id="shareSubtitle" style="opacity: 0.8; margin-bottom: 1rem;"></p>
+        <p class="sc-body" style="word-break: break-all; opacity: 0.7; font-size: 14px;" id="shareUrlText"></p>
+        <div class="sc-share-row" style="margin: 1.25rem 0;">
+          <button type="button" class="sc-btn" id="overlayCopy">Copy link</button>
+          <a href="#" class="sc-btn sc-btn-gold" id="overlayWhatsapp">Send on WhatsApp</a>
+          <a href="#" class="sc-btn sc-btn-outline" id="overlayPreview">Preview</a>
+        </div>
+        <div class="sc-qr-box">
+          <img src="" alt="QR code to the card" id="overlayQr" />
+        </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed rgba(74,59,54,0.2);">
+          <p class="ap-label" style="color: var(--rose); margin-bottom: 0.4rem;">Your private link</p>
+          <p class="sc-body" style="font-size: 13px; opacity: 0.7; margin-bottom: 0.75rem;">
+            See when it's opened and answered — keep this link to yourself, don't send it to <span id="shareRecipientName">them</span>.
+          </p>
+          <div class="sc-share-row">
+            <a href="#" class="sc-btn sc-btn-outline" id="overlayResults" target="_blank" rel="noopener">View status 📊</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/cardComponents.js"></script>
+  <script>
+    const S = window.SurpriseCard;
+
+    // --- Character limit counters ---
+    ['sorryText', 'whyMatterText', 'forgiveMessage'].forEach((name) => {
+      const el = document.getElementById(name);
+      const counter = document.querySelector(`[data-count-for="${name}"]`);
+      const max = el.getAttribute('maxlength');
+      el.addEventListener('input', () => { counter.textContent = `${el.value.length} / ${max}`; });
+    });
+
+    // --- Final question chips ---
+    const finalQuestionInput = document.getElementById('finalQuestion');
+    const customInput = document.getElementById('customQuestionInput');
+    document.querySelectorAll('#questionChoices .ap-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#questionChoices .ap-chip').forEach((c) => c.classList.remove('ap-chip-active'));
+        chip.classList.add('ap-chip-active');
+        const q = chip.getAttribute('data-question');
+        if (q === '__custom__') {
+          customInput.style.display = 'block';
+          customInput.focus();
+          finalQuestionInput.value = customInput.value;
+        } else {
+          customInput.style.display = 'none';
+          finalQuestionInput.value = q;
+        }
+      });
+    });
+    customInput.addEventListener('input', () => { finalQuestionInput.value = customInput.value; });
+
+    // --- Photo slots (up to 3), each shows a preview thumbnail once chosen ---
+    const photoFiles = [null, null, null];
+    document.querySelectorAll('[data-slot-input]').forEach((input) => {
+      input.addEventListener('change', () => {
+        const slot = Number(input.getAttribute('data-slot-input'));
+        const file = input.files[0];
+        photoFiles[slot] = file || null;
+        const slotEl = input.closest('.ap-photo-slot');
+        slotEl.querySelectorAll('img').forEach((img) => img.remove());
+        if (file) {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(file);
+          slotEl.prepend(img);
+        }
+      });
+    });
+
+    // --- Live preview ---
+    const moodSvgs = {};
+    document.querySelectorAll('.ap-mood-card svg').forEach((svg, i) => {
+      const input = document.querySelectorAll('input[name="moodCharacter"]')[i];
+      if (input) moodSvgs[input.value] = svg.outerHTML;
+    });
+    function updatePreview() {
+      const theirName = document.getElementById('theirName').value.trim() || 'Them';
+      const sorryText = document.getElementById('sorryText').value.trim() || "I'm sorry for...";
+      const mood = document.querySelector('input[name="moodCharacter"]:checked')?.value;
+      document.getElementById('previewDear').textContent = `Dear ${theirName},`;
+      document.getElementById('previewSorry').textContent = sorryText;
+      if (mood && moodSvgs[mood]) document.getElementById('previewMood').innerHTML = moodSvgs[mood];
+    }
+    document.getElementById('theirName').addEventListener('input', updatePreview);
+    document.getElementById('sorryText').addEventListener('input', updatePreview);
+    document.querySelectorAll('input[name="moodCharacter"]').forEach((r) => r.addEventListener('change', updatePreview));
+    updatePreview();
+
+    // --- Client-side required-field check (server re-validates regardless) ---
+    function showErrors(errors) {
+      document.querySelectorAll('.ap-error').forEach((el) => { el.classList.remove('ap-show'); el.textContent = ''; });
+      Object.entries(errors || {}).forEach(([field, message]) => {
+        const el = document.querySelector(`[data-error-for="${field}"]`);
+        if (el) { el.textContent = message; el.classList.add('ap-show'); }
+      });
+    }
+
+    function clientValidate() {
+      const errors = {};
+      const theirName = document.getElementById('theirName').value.trim();
+      const yourName = document.getElementById('yourName').value.trim();
+      const sorryText = document.getElementById('sorryText').value.trim();
+      if (!theirName) errors.theirName = 'Their name is required.';
+      if (!yourName) errors.yourName = 'Your name is required.';
+      if (!sorryText) errors.sorryText = "Let them know what you're sorry for.";
+      if (!finalQuestionInput.value.trim()) errors.finalQuestion = 'Choose or write a final question.';
+      return errors;
+    }
+
+    // --- Submit flow: form -> loading overlay -> share overlay ---
+    const overlay = document.getElementById('overlay');
+    const waveWrap = document.getElementById('waveCharacter');
+
+    document.getElementById('apologyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const clientErrors = clientValidate();
+      if (Object.keys(clientErrors).length) { showErrors(clientErrors); return; }
+      showErrors({});
+
+      // Show the loading overlay with the chosen character waving.
+      const mood = document.querySelector('input[name="moodCharacter"]:checked')?.value;
+      waveWrap.innerHTML = (moodSvgs[mood] || '') + '<div class="ap-wave-paw"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="8" fill="#C97B8A"/></svg></div>';
+      overlay.classList.add('ap-overlay-visible');
+      const overlayScreens = S.createScreenContainer(overlay);
+      overlayScreens.goTo(0);
+
+      const formData = new FormData();
+      formData.append('theirName', document.getElementById('theirName').value.trim());
+      formData.append('yourName', document.getElementById('yourName').value.trim());
+      formData.append('moodCharacter', mood || '');
+      formData.append('sorryText', document.getElementById('sorryText').value.trim());
+      formData.append('whyMatterText', document.getElementById('whyMatterText').value.trim());
+      formData.append('finalQuestion', finalQuestionInput.value.trim());
+      formData.append('forgiveMessage', document.getElementById('forgiveMessage').value.trim());
+      photoFiles.forEach((f) => { if (f) formData.append('photos', f); });
+
+      try {
+        const res = await fetch('/cards/apology/create', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': <%- JSON.stringify(csrfToken) %> },
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          overlay.classList.remove('ap-overlay-visible');
+          showErrors(data.errors || {});
+          return;
+        }
+
+        // Give the loading screen a moment to feel intentional rather than
+        // flickering past instantly on a fast connection.
+        setTimeout(() => {
+          document.getElementById('shareSubtitle').textContent = data.whatsappPreviewTitle;
+          document.getElementById('shareUrlText').textContent = data.shareUrl;
+          document.getElementById('overlayQr').src = data.qrDataUrl;
+          document.getElementById('shareRecipientName').textContent = data.recipientName;
+          document.getElementById('overlayResults').setAttribute('href', data.resultsUrl);
+          S.wireShareScreen({
+            copyBtn: document.getElementById('overlayCopy'),
+            whatsappBtn: document.getElementById('overlayWhatsapp'),
+            previewBtn: document.getElementById('overlayPreview'),
+            shareUrl: data.shareUrl,
+            whatsappText: 'I owe you something... please open this 💛',
+          });
+          overlayScreens.next();
+          S.burstConfetti();
+        }, 1400);
+      } catch (err) {
+        overlay.classList.remove('ap-overlay-visible');
+        showErrors({ theirName: 'Something went wrong sending this. Please try again.' });
+      }
+    });
+  </script>
+</body>
+</html>

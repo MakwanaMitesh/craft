@@ -1,0 +1,133 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<a href="/admin/templates" class="text-sm text-amber-700 font-semibold mb-4 inline-block">&larr; Back to templates</a>
+
+<div class="max-w-2xl card-panel">
+  <form
+    action="<%= template ? `/admin/templates/${template._id}/edit` : '/admin/templates' %>"
+    method="POST" enctype="multipart/form-data" class="space-y-5"
+  >
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div>
+      <label class="label" for="name">Name</label>
+      <input class="input-field" type="text" id="name" name="name" value="<%= template ? template.name : '' %>" required />
+    </div>
+    <div>
+      <label class="label" for="slug">Slug</label>
+      <input class="input-field" type="text" id="slug" name="slug" placeholder="warm-sunset" value="<%= template ? template.slug : '' %>" required />
+    </div>
+
+    <div>
+      <label class="label" for="occasion">Occasion</label>
+      <select class="input-field" id="occasion" name="occasion">
+        <% OCCASIONS.forEach(o => { %>
+          <option value="<%= o %>" <%= (template ? template.occasion : 'birthday') === o ? 'selected' : '' %>>
+            <%= o[0].toUpperCase() + o.slice(1) %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3">
+      <div>
+        <label class="label" for="primaryColor">Primary</label>
+        <input class="input-field" type="color" id="primaryColor" name="primaryColor" value="<%= template ? template.colorTheme.primary : '#B45309' %>" />
+      </div>
+      <div>
+        <label class="label" for="secondaryColor">Secondary</label>
+        <input class="input-field" type="color" id="secondaryColor" name="secondaryColor" value="<%= template ? template.colorTheme.secondary : '#F43F5E' %>" />
+      </div>
+      <div>
+        <label class="label" for="backgroundColor">Background</label>
+        <input class="input-field" type="color" id="backgroundColor" name="backgroundColor" value="<%= template ? template.colorTheme.background : '#FFFBF4' %>" />
+      </div>
+    </div>
+
+    <div>
+      <label class="label" for="fontPairId">Font pair</label>
+      <select class="input-field" id="fontPairId" name="fontPairId">
+        <% fontPairs.forEach(fp => { %>
+          <option value="<%= fp.id %>" <%= template && template.fontPairId === fp.id ? 'selected' : '' %>>
+            <%= fp.heading %> + <%= fp.body %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div data-occasion-section="birthday">
+      <label class="label">Enabled sections <span class="text-stone-400 font-normal">(birthday only)</span></label>
+      <div class="flex flex-wrap gap-4 text-sm font-semibold text-stone-700">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="sectionBalloons" class="rounded border-stone-300" <%= !template || template.sections.balloons ? 'checked' : '' %> /> Balloons
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="sectionCake" class="rounded border-stone-300" <%= !template || template.sections.cake ? 'checked' : '' %> /> Cake
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="sectionPhotoGallery" class="rounded border-stone-300" <%= template && template.sections.photoGallery ? 'checked' : '' %> /> Photo gallery
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="sectionLetter" class="rounded border-stone-300" <%= !template || template.sections.letter ? 'checked' : '' %> /> Letter
+        </label>
+      </div>
+    </div>
+
+    <div data-occasion-section="proposal">
+      <label class="label" for="stickers">Stickers <span class="text-stone-400 font-normal">(proposal only — pick one of these when building a card)</span></label>
+      <% if (template && template.stickers && template.stickers.length) { %>
+        <div class="flex flex-wrap gap-2 mb-2">
+          <% template.stickers.forEach(s => { %>
+            <div class="text-center">
+              <img src="<%= s.url %>" alt="<%= s.name %>" class="w-14 h-14 object-cover rounded-lg border border-amber-100" />
+              <p class="text-[10px] text-stone-400 mt-0.5 max-w-[56px] truncate"><%= s.name %></p>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+      <input class="input-field" type="file" id="stickers" name="stickers" accept="image/jpeg,image/png,image/webp" multiple />
+      <p class="text-xs text-stone-400 mt-1">Uploading new stickers replaces the current set. Each file's name becomes the sticker's name.</p>
+    </div>
+
+    <div>
+      <label class="label" for="musicTracks">Music tracks (optional)</label>
+      <textarea
+        class="input-field" id="musicTracks" name="musicTracks" rows="3"
+        placeholder="Soft Piano | https://example.com/soft-piano.mp3"
+      ><%= typeof musicTracksText !== 'undefined' ? musicTracksText : '' %></textarea>
+      <p class="text-xs text-stone-400 mt-1">One per line: Track Name | https://url-to-file.mp3. Only the first track plays.</p>
+    </div>
+
+    <div>
+      <label class="label" for="thumbnail">Thumbnail</label>
+      <% if (template && template.thumbnail) { %>
+        <img src="<%= template.thumbnail %>" alt="Current thumbnail" class="w-24 h-16 object-cover rounded-lg mb-2" />
+      <% } %>
+      <input class="input-field" type="file" id="thumbnail" name="thumbnail" accept="image/jpeg,image/png,image/webp" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="label" for="sortOrder">Sort order</label>
+        <input class="input-field" type="number" id="sortOrder" name="sortOrder" value="<%= template ? template.sortOrder : 0 %>" />
+      </div>
+      <label class="flex items-center gap-2 text-sm font-semibold text-stone-700 mt-7">
+        <input type="checkbox" name="isPremium" class="rounded border-stone-300" <%= template && template.isPremium ? 'checked' : '' %> /> Premium template
+      </label>
+    </div>
+
+    <button type="submit" class="btn-primary w-full"><%= template ? 'Save changes' : 'Create template' %></button>
+  </form>
+</div>
+
+<script>
+  const occasionSelect = document.getElementById('occasion');
+  function syncOccasionSections() {
+    document.querySelectorAll('[data-occasion-section]').forEach((el) => {
+      el.style.display = el.dataset.occasionSection === occasionSelect.value ? '' : 'none';
+    });
+  }
+  occasionSelect.addEventListener('change', syncOccasionSections);
+  syncOccasionSections();
+</script>
+
+<%- include('../layouts/dashboard-foot') %>

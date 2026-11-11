@@ -1,0 +1,172 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<form method="GET" action="/admin/analytics" class="flex flex-wrap items-end gap-3 mb-6">
+  <div>
+    <label class="label" for="range">Date range</label>
+    <select name="range" id="range" class="input-field max-w-[160px]" onchange="this.form.submit()">
+      <option value="today" <%= range === 'today' ? 'selected' : '' %>>Today</option>
+      <option value="7d" <%= range === '7d' ? 'selected' : '' %>>Last 7 days</option>
+      <option value="30d" <%= range === '30d' ? 'selected' : '' %>>Last 30 days</option>
+      <option value="month" <%= range === 'month' ? 'selected' : '' %>>This month</option>
+      <option value="custom" <%= range === 'custom' ? 'selected' : '' %>>Custom</option>
+    </select>
+  </div>
+  <% if (range === 'custom') { %>
+    <div><label class="label" for="from">From</label><input class="input-field" type="date" id="from" name="from" value="<%= rangeFrom %>" /></div>
+    <div><label class="label" for="to">To</label><input class="input-field" type="date" id="to" name="to" value="<%= rangeTo %>" /></div>
+    <button type="submit" class="btn-secondary">Apply</button>
+  <% } %>
+</form>
+
+<div class="grid lg:grid-cols-4 gap-6 mb-6">
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">Views by device</h3>
+    <canvas id="deviceChart" height="160"></canvas>
+  </div>
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">Views by browser</h3>
+    <canvas id="browserChart" height="160"></canvas>
+  </div>
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">Views by source</h3>
+    <canvas id="sourceChart" height="160"></canvas>
+  </div>
+  <div class="card-panel">
+    <h3 class="font-semibold mb-3">Top countries</h3>
+    <div class="space-y-2 text-sm">
+      <% byCountry.forEach(c => { %>
+        <div class="flex items-center justify-between"><span class="text-stone-600"><%= c._id %></span><span class="font-semibold text-stone-700"><%= c.count %></span></div>
+      <% }) %>
+      <% if (!byCountry.length) { %><p class="text-stone-400">No location data yet.</p><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card-panel mb-6">
+  <h3 class="font-semibold mb-4">Busiest hours &amp; days</h3>
+  <div class="overflow-x-auto">
+    <table class="text-xs border-collapse">
+      <thead>
+        <tr>
+          <th class="pr-2"></th>
+          <% for (let h = 0; h < 24; h++) { %><th class="px-1 text-stone-400 font-normal"><%= h %></th><% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; %>
+        <% const maxCount = Math.max(1, ...heatmap.flat()); %>
+        <% days.forEach((day, d) => { %>
+          <tr>
+            <td class="pr-2 text-stone-500 font-semibold"><%= day %></td>
+            <% heatmap[d].forEach(count => { %>
+              <% const intensity = count / maxCount; %>
+              <td class="w-6 h-6 text-center" style="background: rgba(180, 83, 9, <%= intensity.toFixed(2) %>);" title="<%= count %> views">
+                <span class="<%= intensity > 0.5 ? 'text-white' : 'text-transparent' %>"><%= count %></span>
+              </td>
+            <% }) %>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6 mb-6">
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">Birthday funnel</h3>
+    <div class="space-y-3">
+      <% birthdayFunnel.forEach((step, i) => { %>
+        <div>
+          <div class="flex items-center justify-between text-sm mb-1">
+            <span class="text-stone-600"><%= step.step %></span>
+            <span class="font-semibold"><%= step.value %></span>
+          </div>
+          <div class="h-2 rounded-full bg-amber-100">
+            <div class="h-2 rounded-full bg-amber-600" style="width: <%= birthdayFunnel[0].value ? Math.round((step.value / birthdayFunnel[0].value) * 100) : 0 %>%"></div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">Proposal funnel</h3>
+    <div class="space-y-3">
+      <% proposalFunnel.forEach((step) => { %>
+        <div>
+          <div class="flex items-center justify-between text-sm mb-1">
+            <span class="text-stone-600"><%= step.step %></span>
+            <span class="font-semibold"><%= step.value %></span>
+          </div>
+          <div class="h-2 rounded-full bg-rose-100">
+            <div class="h-2 rounded-full bg-rose-600" style="width: <%= proposalFunnel[0].value ? Math.round((step.value / proposalFunnel[0].value) * 100) : 0 %>%"></div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <p class="text-sm text-stone-500 mt-4">Average NO attempts before YES: <strong><%= avgNoAttempts %></strong></p>
+  </div>
+
+  <div class="card-panel">
+    <h3 class="font-semibold mb-4">Visitor funnel</h3>
+    <div class="space-y-3">
+      <% visitorFunnel.forEach((step) => { %>
+        <div>
+          <div class="flex items-center justify-between text-sm mb-1">
+            <span class="text-stone-600"><%= step.step %></span>
+            <span class="font-semibold"><%= step.value %></span>
+          </div>
+          <div class="h-2 rounded-full bg-sky-100">
+            <div class="h-2 rounded-full bg-sky-600" style="width: <%= visitorFunnel[0].value ? Math.round((step.value / visitorFunnel[0].value) * 100) : 0 %>%"></div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="card-panel overflow-x-auto">
+    <h3 class="font-semibold mb-4">Top templates by cards created</h3>
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-stone-500 border-b border-amber-100"><th class="py-2 pr-4">Template</th><th class="py-2 pr-4">Cards</th></tr></thead>
+      <tbody>
+        <% topTemplatesByCards.forEach(t => { %>
+          <tr class="border-b border-amber-50"><td class="py-2 pr-4"><%= t.template.name %></td><td class="py-2 pr-4"><%= t.count %></td></tr>
+        <% }) %>
+        <% if (!topTemplatesByCards.length) { %><tr><td colspan="2" class="py-6 text-center text-stone-500">No cards in this period.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+  <div class="card-panel overflow-x-auto">
+    <h3 class="font-semibold mb-4">Top templates by revenue</h3>
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-stone-500 border-b border-amber-100"><th class="py-2 pr-4">Template</th><th class="py-2 pr-4">Revenue</th></tr></thead>
+      <tbody>
+        <% topTemplatesByRevenue.forEach(t => { %>
+          <tr class="border-b border-amber-50"><td class="py-2 pr-4"><%= t.template.name %></td><td class="py-2 pr-4">₹<%= t.revenue %></td></tr>
+        <% }) %>
+        <% if (!topTemplatesByRevenue.length) { %><tr><td colspan="2" class="py-6 text-center text-stone-500">No revenue in this period.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  function doughnut(id, rows) {
+    new Chart(document.getElementById(id), {
+      type: 'doughnut',
+      data: {
+        labels: rows.map(r => r._id || 'unknown'),
+        datasets: [{ data: rows.map(r => r.count), backgroundColor: ['#B45309', '#E11D48', '#0EA5E9', '#16A34A', '#9333EA', '#F59E0B', '#64748B', '#DB2777'] }],
+      },
+      options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } },
+    });
+  }
+  doughnut('deviceChart', <%- JSON.stringify(byDevice) %>);
+  doughnut('browserChart', <%- JSON.stringify(byBrowser) %>);
+  doughnut('sourceChart', <%- JSON.stringify(bySource) %>);
+</script>
+
+<%- include('../layouts/dashboard-foot') %>

@@ -1,0 +1,87 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<form method="GET" action="/admin/orders" class="flex flex-wrap items-end gap-3 mb-5">
+  <div>
+    <label class="label" for="occasion">Occasion</label>
+    <select name="occasion" id="occasion" class="input-field max-w-[160px]">
+      <option value="all" <%= filters.occasion === 'all' ? 'selected' : '' %>>All</option>
+      <% OCCASIONS.forEach(o => { %>
+        <option value="<%= o %>" <%= filters.occasion === o ? 'selected' : '' %>><%= o[0].toUpperCase() + o.slice(1) %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label class="label" for="status">Status</label>
+    <select name="status" id="status" class="input-field max-w-[160px]">
+      <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All</option>
+      <option value="created" <%= filters.status === 'created' ? 'selected' : '' %>>Created</option>
+      <option value="paid" <%= filters.status === 'paid' ? 'selected' : '' %>>Paid</option>
+      <option value="failed" <%= filters.status === 'failed' ? 'selected' : '' %>>Failed</option>
+      <option value="refunded" <%= filters.status === 'refunded' ? 'selected' : '' %>>Refunded</option>
+    </select>
+  </div>
+  <div>
+    <label class="label" for="dateFrom">From</label>
+    <input class="input-field" type="date" id="dateFrom" name="dateFrom" value="<%= filters.dateFrom %>" />
+  </div>
+  <div>
+    <label class="label" for="dateTo">To</label>
+    <input class="input-field" type="date" id="dateTo" name="dateTo" value="<%= filters.dateTo %>" />
+  </div>
+  <button type="submit" class="btn-secondary">Filter</button>
+  <a
+    href="/admin/orders/export.csv?status=<%= filters.status %>&dateFrom=<%= filters.dateFrom %>&dateTo=<%= filters.dateTo %>&occasion=<%= filters.occasion %>"
+    class="btn-primary"
+  >Export CSV</a>
+</form>
+
+<div class="card-panel overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-stone-500 border-b border-amber-100">
+        <th class="py-2 pr-4">Customer</th>
+        <th class="py-2 pr-4">Occasion</th>
+        <th class="py-2 pr-4">Card</th>
+        <th class="py-2 pr-4">Plan</th>
+        <th class="py-2 pr-4">Amount</th>
+        <th class="py-2 pr-4">Status</th>
+        <th class="py-2 pr-4">Date</th>
+        <th class="py-2 pr-4"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% orders.forEach(o => { %>
+        <tr class="border-b border-amber-50">
+          <td class="py-2 pr-4"><%= o.user?.name %><br/><span class="text-xs text-stone-400"><%= o.user?.email %></span></td>
+          <td class="py-2 pr-4">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600">
+              <%= o.card?.occasion ? o.card.occasion[0].toUpperCase() + o.card.occasion.slice(1) : '—' %>
+            </span>
+          </td>
+          <td class="py-2 pr-4"><%= o.card?.recipientName || o.card?.partnerName %></td>
+          <td class="py-2 pr-4"><%= o.plan?.name %></td>
+          <td class="py-2 pr-4">₹<%= o.amount %></td>
+          <td class="py-2 pr-4">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= o.status === 'paid' ? 'bg-amber-50 text-amber-700' : o.status === 'failed' ? 'bg-rose-50 text-rose-600' : o.status === 'refunded' ? 'bg-sky-50 text-sky-600' : 'bg-stone-100 text-stone-500' %>">
+              <%= o.status %>
+            </span>
+          </td>
+          <td class="py-2 pr-4"><%= o.createdAt.toDateString() %></td>
+          <td class="py-2 pr-4">
+            <% if (o.status === 'paid') { %>
+              <form action="/admin/orders/<%= o._id %>/refund" method="POST" onsubmit="return confirm('Refund ₹<%= o.amount %> to the customer via Razorpay?');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn-danger text-xs px-2 py-1">Refund</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (!orders.length) { %>
+        <tr><td colspan="8" class="py-6 text-center text-stone-500">No orders match this filter.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

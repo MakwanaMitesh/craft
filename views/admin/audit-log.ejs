@@ -1,0 +1,46 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<a href="/admin/settings" class="text-sm text-amber-700 font-semibold mb-4 inline-block">&larr; Back to settings</a>
+
+<div class="card-panel overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-stone-500 border-b border-amber-100">
+        <th class="py-2 pr-4">Admin</th>
+        <th class="py-2 pr-4">Action</th>
+        <th class="py-2 pr-4">Target</th>
+        <th class="py-2 pr-4">Details</th>
+        <th class="py-2 pr-4">When</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% logs.forEach(log => { %>
+        <tr class="border-b border-amber-50">
+          <td class="py-2 pr-4"><%= log.admin?.name || 'Deleted admin' %></td>
+          <td class="py-2 pr-4"><span class="text-xs font-semibold px-2 py-1 rounded-full bg-stone-100 text-stone-600"><%= log.action %></span></td>
+          <td class="py-2 pr-4 text-xs text-stone-400"><%= log.targetType %><% if (log.targetId) { %> &middot; <%= log.targetId %><% } %></td>
+          <td class="py-2 pr-4 text-xs text-stone-500 max-w-xs truncate" title="<%= JSON.stringify(log.details || {}) %>">
+            <%= log.details ? JSON.stringify(log.details) : '—' %>
+          </td>
+          <td class="py-2 pr-4 text-xs text-stone-400"><%= log.createdAt.toLocaleString() %></td>
+        </tr>
+      <% }) %>
+      <% if (!logs.length) { %>
+        <tr><td colspan="5" class="py-6 text-center text-stone-500">No admin actions recorded yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<% if (totalPages > 1) { %>
+  <div class="flex items-center justify-center gap-2 mt-5">
+    <% for (let p = 1; p <= totalPages; p++) { %>
+      <a
+        href="/admin/audit-log?page=<%= p %>"
+        class="px-3 py-1.5 rounded-lg text-sm font-semibold <%= p === page ? 'bg-amber-600 text-white' : 'bg-white border border-amber-100 text-stone-600 hover:bg-amber-50' %>"
+      ><%= p %></a>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('../layouts/dashboard-foot') %>

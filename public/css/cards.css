@@ -1,0 +1,312 @@
+/*
+  Shared design system for all "Interactive Surprise Cards" (recipient
+  experiences + their style guide). Deliberately separate from the
+  Tailwind-compiled public/css/output.css used by the rest of the site —
+  this is its own small, hand-authored stylesheet so the premium/stationery
+  look stays consistent across every card type without fighting Tailwind's
+  utility classes. Loaded directly via <link> on card pages, not through
+  the Tailwind build step.
+*/
+
+:root {
+  --cream: #FFF8F0;
+  --blush: #F8D7DA;
+  --rose: #E07A8B;
+  --gold: #D4A373;
+  --cocoa: #4A3B36;
+  --white-soft: #FFFDFB;
+
+  --font-heading: 'Fraunces', Georgia, serif;
+  --font-body: 'DM Sans', ui-sans-serif, sans-serif;
+  --font-hand: 'Caveat', cursive;
+
+  --radius-card: 20px;
+  --shadow-soft: 0 10px 30px rgba(74, 59, 54, 0.10);
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Base animation durations — a card can override just these (e.g. to run
+     20% slower for a calmer feel) without touching any selector below. */
+  --dur-screen: 600ms;
+  --dur-envelope: 700ms;
+  --dur-letter: 500ms;
+  --dur-tap-pulse: 2.2s;
+}
+
+.sc-root {
+  background: var(--cream);
+  color: var(--cocoa);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sc-root h1, .sc-root h2, .sc-root h3, .sc-root .sc-heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+}
+.sc-root h2, .sc-root h3 { font-weight: 500; }
+
+.sc-root .sc-hand {
+  font-family: var(--font-hand);
+  font-weight: 500;
+}
+
+/* Mobile-first type scale — never below 14px, headings 28-36px on phones. */
+.sc-root h1, .sc-root .sc-h1 { font-size: clamp(28px, 7vw, 36px); }
+.sc-root h2, .sc-root .sc-h2 { font-size: clamp(22px, 5.5vw, 28px); }
+.sc-root p, .sc-root .sc-body { font-size: 16px; line-height: 1.6; }
+@media (min-width: 640px) {
+  .sc-root p, .sc-root .sc-body { font-size: 18px; }
+}
+
+/* --- Cards / panels --- */
+.sc-card {
+  background: var(--white-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 1.75rem;
+}
+
+/* --- Buttons --- */
+.sc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--rose);
+  color: var(--white-soft);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 16px;
+  border: none;
+  border-radius: 999px;
+  padding: 0.9rem 2rem;
+  cursor: pointer;
+  transition: transform 150ms var(--ease-soft), box-shadow 150ms var(--ease-soft);
+  box-shadow: var(--shadow-soft);
+}
+.sc-btn:active { transform: scale(0.97); }
+.sc-btn-outline {
+  background: transparent;
+  color: var(--rose);
+  border: 1.5px solid var(--rose);
+  box-shadow: none;
+}
+.sc-btn-gold {
+  background: var(--gold);
+  color: var(--white-soft);
+}
+
+/* --- Paper/grain texture (CSS-only, no image asset) --- */
+.sc-paper {
+  position: relative;
+  overflow: hidden;
+}
+.sc-paper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* --- ScreenContainer: full-screen mobile layout + transitions --- */
+.sc-screen-container {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--cream);
+}
+.sc-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1.5rem;
+  gap: 1.25rem;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--dur-screen) var(--ease-soft), transform var(--dur-screen) var(--ease-soft);
+  pointer-events: none;
+}
+.sc-screen.sc-active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* --- TapToContinue --- */
+.sc-tap-continue {
+  animation: sc-pulse var(--dur-tap-pulse) ease-in-out infinite;
+}
+@keyframes sc-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* --- FloatingBokeh: very slow, low-opacity soft circles drifting upward
+   in the background — an ambient alternative to FloatingHearts for calmer
+   card types. --- */
+.sc-bokeh-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sc-bokeh {
+  position: absolute;
+  bottom: -10%;
+  border-radius: 50%;
+  filter: blur(1px);
+  opacity: 0;
+  animation: sc-bokeh-drift linear forwards;
+}
+@keyframes sc-bokeh-drift {
+  0% { opacity: 0; transform: translateY(0); }
+  15% { opacity: var(--bokeh-opacity, 0.18); }
+  85% { opacity: var(--bokeh-opacity, 0.18); }
+  100% { opacity: 0; transform: translateY(-120vh); }
+}
+
+/* --- FloatingHearts --- */
+.sc-hearts-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sc-heart {
+  position: absolute;
+  bottom: -40px;
+  opacity: 0;
+  animation: sc-rise linear forwards;
+}
+@keyframes sc-rise {
+  0% { opacity: 0; transform: translateY(0) scale(0.8); }
+  10% { opacity: 0.9; }
+  90% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-110vh) scale(1.1); }
+}
+
+/* --- EnvelopeLetter --- */
+.sc-envelope-wrap {
+  position: relative;
+  width: min(90vw, 320px);
+  height: 200px;
+  cursor: pointer;
+}
+.sc-envelope-back { position: absolute; inset: 0; background: var(--rose); border-radius: 10px; }
+.sc-envelope-flap {
+  position: absolute; top: 0; left: 0; right: 0; height: 110px;
+  background: color-mix(in srgb, var(--rose) 75%, black);
+  clip-path: polygon(0 0, 50% 85%, 100% 0);
+  border-radius: 10px 10px 0 0;
+  transform-origin: top center;
+  transition: transform var(--dur-envelope) var(--ease-soft);
+}
+.sc-envelope-wrap.sc-open .sc-envelope-flap { transform: rotateX(-170deg); }
+.sc-envelope-wrap.sc-open .sc-envelope-back { opacity: 0; transition: opacity 300ms var(--ease-soft) 300ms; }
+
+.sc-letter {
+  width: min(90vw, 420px);
+  background: var(--white-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 2rem 1.75rem;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity var(--dur-letter) var(--ease-soft), transform var(--dur-letter) var(--ease-soft);
+  display: none;
+}
+.sc-letter.sc-visible { display: block; opacity: 1; transform: scale(1); }
+.sc-letter-text {
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: var(--cocoa);
+  white-space: pre-wrap;
+}
+.sc-letter-caret {
+  display: inline-block;
+  width: 2px;
+  background: var(--cocoa);
+  margin-left: 2px;
+  animation: sc-blink 900ms steps(1) infinite;
+}
+@keyframes sc-blink { 50% { opacity: 0; } }
+
+/* --- PhotoPolaroids --- */
+.sc-polaroid-stack {
+  position: relative;
+  width: min(80vw, 260px);
+  height: 300px;
+  margin: 0 auto;
+}
+.sc-polaroid {
+  position: absolute;
+  inset: 0;
+  background: var(--white-soft);
+  border-radius: 6px;
+  box-shadow: var(--shadow-soft);
+  padding: 10px 10px 40px;
+  transition: transform 400ms var(--ease-soft), opacity 400ms var(--ease-soft);
+  touch-action: pan-y;
+  cursor: grab;
+}
+.sc-polaroid img, .sc-polaroid svg {
+  width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 2px;
+}
+.sc-polaroid-caption {
+  position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
+  font-family: var(--font-hand); font-size: 1.1rem; color: var(--cocoa);
+}
+
+/* --- SoundToggle --- */
+.sc-sound-toggle {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 40;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: var(--white-soft);
+  color: var(--cocoa);
+  box-shadow: var(--shadow-soft);
+  font-size: 1.2rem;
+}
+
+/* --- ShareScreen --- */
+.sc-share-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+.sc-qr-box {
+  background: var(--white-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 1rem;
+  display: inline-block;
+}
+.sc-qr-box img { display: block; width: 160px; height: 160px; }
+
+/* --- Reduced motion: every animation/transition above collapses to an
+   instant, no-motion state instead of being removed entirely, so content
+   still appears (just without the movement). --- */
+@media (prefers-reduced-motion: reduce) {
+  .sc-root *, .sc-root *::before, .sc-root *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

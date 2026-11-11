@@ -1,0 +1,13 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="max-w-md card-panel text-center mx-auto">
+  <div class="text-4xl mb-3">😕</div>
+  <h3 class="font-semibold text-lg mb-2">Payment didn't go through</h3>
+  <p class="text-stone-500 mb-6">
+    We couldn't confirm your payment for <%= card.recipientName || card.partnerName || 'this card' %>'s card. You haven't been charged
+    for a card that isn't published — no credits were used.
+  </p>
+  <a href="/dashboard/cards/<%= card._id %>/checkout" class="btn-primary inline-block">Try again</a>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

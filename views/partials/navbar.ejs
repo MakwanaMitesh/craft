@@ -1,0 +1,66 @@
+<% if (settings.features?.announcementBarEnabled && settings.homepage?.announcementText) { %>
+  <div class="bg-amber-600 text-white text-sm text-center py-2 px-4">
+    <% if (settings.homepage.announcementLink) { %>
+      <a href="<%= settings.homepage.announcementLink %>" class="hover:underline"><%= settings.homepage.announcementText %></a>
+    <% } else { %>
+      <%= settings.homepage.announcementText %>
+    <% } %>
+  </div>
+<% } %>
+<nav class="bg-white/80 backdrop-blur border-b border-amber-100 sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+    <a href="/" class="font-display text-xl font-semibold text-amber-700 flex items-center gap-2">
+      🎈 <%= settings.siteName %>
+    </a>
+
+    <button id="navToggle" class="sm:hidden p-2 text-stone-600" aria-label="Toggle menu">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+    </button>
+
+    <div class="hidden sm:flex items-center gap-5">
+      <% if (settings.features?.birthdayEnabled !== false) { %><a href="/#birthday" class="text-stone-600 hover:text-amber-700 font-semibold text-sm">🎂 Birthday</a><% } %>
+      <% if (settings.features?.proposalEnabled !== false) { %><a href="/#proposal" class="text-stone-600 hover:text-rose-600 font-semibold text-sm">💌 Proposal</a><% } %>
+      <a href="/#surprise-cards" class="text-stone-600 hover:text-amber-700 font-semibold text-sm">Cards</a>
+      <a href="/#how-it-works" class="text-stone-600 hover:text-amber-700 font-semibold text-sm">How it works</a>
+      <a href="/#pricing" class="text-stone-600 hover:text-amber-700 font-semibold text-sm">Pricing</a>
+      <a href="/#faq" class="text-stone-600 hover:text-amber-700 font-semibold text-sm">FAQ</a>
+      <% if (currentUser) { %>
+        <a href="<%= currentUser.role === 'admin' ? '/admin/dashboard' : '/dashboard' %>" class="btn-secondary">Dashboard</a>
+        <form action="/logout" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" /><button type="submit" class="btn-primary">Log out</button></form>
+      <% } else { %>
+        <a href="/login" class="text-stone-600 hover:text-amber-700 font-semibold text-sm">Log in</a>
+        <a href="/dashboard/cards/new" class="btn-primary">Create your card</a>
+      <% } %>
+    </div>
+  </div>
+
+  <div id="navMenu" class="hidden sm:hidden px-4 pb-4 flex flex-col gap-3">
+    <% if (settings.features?.birthdayEnabled !== false) { %><a href="/#birthday" class="text-stone-600 font-semibold">🎂 Birthday</a><% } %>
+    <% if (settings.features?.proposalEnabled !== false) { %><a href="/#proposal" class="text-stone-600 font-semibold">💌 Proposal</a><% } %>
+    <a href="/#surprise-cards" class="text-stone-600 font-semibold">Cards</a>
+    <a href="/#how-it-works" class="text-stone-600 font-semibold">How it works</a>
+    <a href="/#pricing" class="text-stone-600 font-semibold">Pricing</a>
+    <a href="/#faq" class="text-stone-600 font-semibold">FAQ</a>
+    <% if (currentUser) { %>
+      <a href="<%= currentUser.role === 'admin' ? '/admin/dashboard' : '/dashboard' %>" class="btn-secondary">Dashboard</a>
+      <form action="/logout" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" /><button type="submit" class="btn-primary w-full">Log out</button></form>
+    <% } else { %>
+      <a href="/login" class="text-stone-600 font-semibold">Log in</a>
+      <a href="/dashboard/cards/new" class="btn-primary text-center">Create your card</a>
+    <% } %>
+  </div>
+</nav>
+<script>
+  document.getElementById('navToggle').addEventListener('click', () => {
+    document.getElementById('navMenu').classList.toggle('hidden');
+  });
+</script>
+
+<% if (settings.features?.whatsappButtonEnabled && settings.contact?.whatsappNumber) { %>
+  <a
+    href="https://wa.me/<%= settings.contact.whatsappNumber.replace(/\D/g, '') %>"
+    target="_blank" rel="noopener"
+    class="fixed bottom-5 left-5 z-40 w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg text-2xl"
+    aria-label="Chat on WhatsApp"
+  >💬</a>
+<% } %>

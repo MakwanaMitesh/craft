@@ -1,0 +1,63 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+  <p class="text-sm text-stone-500">
+    <%= approvedCount %> approved — the landing page's reviews section only shows once at least 3 are approved, never fabricated testimonials.
+  </p>
+  <a href="/admin/reviews/export.csv" class="btn-secondary">Export CSV</a>
+</div>
+
+<div class="card-panel overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-stone-500 border-b border-amber-100">
+        <th class="py-2 pr-4">Name</th>
+        <th class="py-2 pr-4">Occasion</th>
+        <th class="py-2 pr-4">Rating</th>
+        <th class="py-2 pr-4">Review</th>
+        <th class="py-2 pr-4">Status</th>
+        <th class="py-2 pr-4">Submitted</th>
+        <th class="py-2 pr-4"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% reviews.forEach(review => { %>
+        <tr class="border-b border-amber-50">
+          <td class="py-2 pr-4 font-semibold"><%= review.name %></td>
+          <td class="py-2 pr-4">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600">
+              <%= review.occasion[0].toUpperCase() + review.occasion.slice(1) %>
+            </span>
+          </td>
+          <td class="py-2 pr-4"><%= '★'.repeat(review.rating) %><span class="text-stone-300"><%= '★'.repeat(5 - review.rating) %></span></td>
+          <td class="py-2 pr-4 max-w-xs truncate" title="<%= review.text %>"><%= review.text %></td>
+          <td class="py-2 pr-4">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full <%= review.isApproved ? 'bg-amber-50 text-amber-700' : 'bg-stone-100 text-stone-500' %>">
+              <%= review.isApproved ? 'Approved' : 'Pending' %>
+            </span>
+          </td>
+          <td class="py-2 pr-4"><%= review.createdAt.toDateString() %></td>
+          <td class="py-2 pr-4 flex gap-2">
+            <% if (review.isApproved) { %>
+              <form action="/admin/reviews/<%= review._id %>/unapprove" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn-secondary text-xs px-2 py-1">Unapprove</button>
+              </form>
+            <% } else { %>
+              <form action="/admin/reviews/<%= review._id %>/approve" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn-primary text-xs px-2 py-1">Approve</button>
+              </form>
+            <% } %>
+            <form action="/admin/reviews/<%= review._id %>/delete" method="POST" onsubmit="return confirm('Delete this review?');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn-danger text-xs px-2 py-1">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (!reviews.length) { %>
+        <tr><td colspan="7" class="py-6 text-center text-stone-500">No reviews submitted yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

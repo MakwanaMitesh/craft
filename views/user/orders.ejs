@@ -1,0 +1,44 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="card-panel overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-stone-500 border-b border-amber-100">
+        <th class="py-2 pr-4">Date</th>
+        <th class="py-2 pr-4">Card</th>
+        <th class="py-2 pr-4">Plan</th>
+        <th class="py-2 pr-4">Amount</th>
+        <th class="py-2 pr-4">Status</th>
+        <th class="py-2 pr-4">Invoice</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% orders.forEach(o => { %>
+        <tr class="border-b border-amber-50">
+          <td class="py-2 pr-4"><%= o.createdAt.toDateString() %></td>
+          <td class="py-2 pr-4"><%= o.card?.recipientName || o.card?.partnerName || '—' %></td>
+          <td class="py-2 pr-4"><%= o.plan?.name || '—' %></td>
+          <td class="py-2 pr-4">₹<%= o.amount %></td>
+          <td class="py-2 pr-4">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= o.status === 'paid' ? 'bg-amber-50 text-amber-700' : o.status === 'failed' ? 'bg-rose-50 text-rose-600' : 'bg-stone-100 text-stone-500' %>">
+              <%= o.status %>
+            </span>
+          </td>
+          <td class="py-2 pr-4">
+            <% if (o.status === 'paid') { %>
+              <a href="/dashboard/orders/<%= o._id %>/invoice.pdf" class="text-amber-700 font-semibold">Download PDF</a>
+            <% } else { %>
+              <span class="text-stone-400">—</span>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (!orders.length) { %>
+        <tr><td colspan="6" class="py-6 text-center text-stone-500">No orders yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

@@ -1,0 +1,25 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<p class="text-stone-500 mb-6">What are you creating today?</p>
+
+<div class="grid sm:grid-cols-2 gap-6 max-w-2xl">
+  <% if (enabledOccasions.includes('birthday')) { %>
+    <a href="/dashboard/cards/new/template?occasion=birthday" class="card-panel text-center py-12 hover:border-amber-300 border-2 border-transparent transition">
+      <div class="text-5xl mb-4">🎂</div>
+      <h3 class="font-display text-xl font-semibold text-stone-800">Birthday</h3>
+      <p class="text-sm text-stone-500 mt-1">Balloons, candles, and a letter with photos.</p>
+    </a>
+  <% } %>
+  <% if (enabledOccasions.includes('proposal')) { %>
+    <a href="/dashboard/cards/new/template?occasion=proposal" class="card-panel text-center py-12 hover:border-rose-300 border-2 border-transparent transition">
+      <div class="text-5xl mb-4">💍</div>
+      <h3 class="font-display text-xl font-semibold text-stone-800">Love Proposal</h3>
+      <p class="text-sm text-stone-500 mt-1">Ask the big question, with a celebration when they say yes.</p>
+    </a>
+  <% } %>
+  <% if (!enabledOccasions.length) { %>
+    <p class="text-stone-500 col-span-2">Card creation is temporarily unavailable. Please check back soon.</p>
+  <% } %>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

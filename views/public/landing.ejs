@@ -1,0 +1,419 @@
+<%- include('../layouts/landing-head', { title }) %>
+
+<!-- ===================== HERO ===================== -->
+<section class="relative overflow-hidden bg-gradient-to-b from-amber-50 via-rose-50/40 to-white py-16 sm:py-24">
+  <div class="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true" data-float-bg>
+    <svg class="absolute -top-6 left-[6%] w-14 h-16 opacity-70 float-slow" viewBox="0 0 48 60" fill="none"><ellipse cx="24" cy="24" rx="22" ry="24" fill="#D97706" fill-opacity="0.25"/><line x1="24" y1="48" x2="24" y2="60" stroke="#D97706" stroke-opacity="0.35" stroke-width="2"/></svg>
+    <svg class="absolute top-10 left-[22%] w-10 h-12 opacity-60 float-med" viewBox="0 0 48 60" fill="none"><ellipse cx="24" cy="24" rx="20" ry="22" fill="#FB7185" fill-opacity="0.3"/><line x1="24" y1="46" x2="24" y2="58" stroke="#FB7185" stroke-opacity="0.4" stroke-width="2"/></svg>
+    <svg class="absolute top-4 right-[18%] w-12 h-14 opacity-60 float-slow" viewBox="0 0 32 28" fill="none"><path d="M16 26C16 26 2 17 2 9C2 4 5.5 1 10 1C13 1 15.3 2.8 16 5C16.7 2.8 19 1 22 1C26.5 1 30 4 30 9C30 17 16 26 16 26Z" fill="#E11D48" fill-opacity="0.25"/></svg>
+    <svg class="absolute top-24 right-[8%] w-16 h-18 opacity-50 float-med" viewBox="0 0 48 60" fill="none"><ellipse cx="24" cy="24" rx="22" ry="24" fill="#F59E0B" fill-opacity="0.2"/><line x1="24" y1="48" x2="24" y2="60" stroke="#F59E0B" stroke-opacity="0.3" stroke-width="2"/></svg>
+    <svg class="absolute bottom-6 left-[12%] w-9 h-8 opacity-50 float-fast" viewBox="0 0 32 28" fill="none"><path d="M16 26C16 26 2 17 2 9C2 4 5.5 1 10 1C13 1 15.3 2.8 16 5C16.7 2.8 19 1 22 1C26.5 1 30 4 30 9C30 17 16 26 16 26Z" fill="#FB7185" fill-opacity="0.3"/></svg>
+  </div>
+
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 relative">
+    <div class="grid lg:grid-cols-2 gap-12 items-center">
+      <div data-reveal>
+        <h1 class="text-4xl sm:text-5xl font-display font-semibold leading-tight text-stone-800">
+          <%= content.hero.headline %>
+        </h1>
+        <p class="mt-5 text-lg text-stone-500 max-w-md"><%= content.hero.subline %></p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <% if (enabledOccasions.includes('birthday')) { %>
+            <a href="/dashboard/cards/new?occasion=birthday" class="btn-primary text-base px-6 py-3">🎂 Create Birthday Wish</a>
+          <% } %>
+          <% if (enabledOccasions.includes('proposal')) { %>
+            <a href="/dashboard/cards/new?occasion=proposal" class="text-base px-6 py-3 rounded-xl2 font-semibold bg-rose-600 text-white hover:bg-rose-700 transition">💌 Create Love Proposal</a>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="relative h-80 sm:h-96 flex items-center justify-center gap-6" data-reveal>
+        <div class="phone-mock" style="--tilt:-6deg">
+          <div class="phone-mock-screen bg-gradient-to-br from-amber-100 to-amber-50">
+            <div class="text-5xl phone-loop" data-loop="birthday">🎈</div>
+            <p class="font-display text-amber-700 font-semibold text-sm mt-2">Happy Birthday!</p>
+          </div>
+        </div>
+        <div class="phone-mock hidden sm:block" style="--tilt:6deg">
+          <div class="phone-mock-screen bg-gradient-to-br from-rose-100 to-rose-50">
+            <div class="text-5xl phone-loop" data-loop="proposal">💌</div>
+            <p class="font-display text-rose-600 font-semibold text-sm mt-2">Will you marry me?</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6">
+  <%- include('../partials/flash') %>
+
+  <!-- ===================== SURPRISE CARDS TEASER ===================== -->
+  <% if (surpriseCardsSection.length) { %>
+    <section id="surprise-cards" class="py-16 scroll-mt-20">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div data-reveal>
+          <h2 class="text-3xl font-display font-semibold">Surprise Cards</h2>
+          <p class="text-stone-500 mt-1">Pick an experience and send it in minutes.</p>
+        </div>
+        <div class="hidden sm:flex gap-2">
+          <button type="button" id="scCardsPrev" class="w-10 h-10 rounded-full border border-amber-200 text-stone-600 hover:bg-amber-50 flex items-center justify-center" aria-label="Scroll left">←</button>
+          <button type="button" id="scCardsNext" class="w-10 h-10 rounded-full border border-amber-200 text-stone-600 hover:bg-amber-50 flex items-center justify-center" aria-label="Scroll right">→</button>
+        </div>
+      </div>
+
+      <div id="scCardsRow" class="flex gap-5 overflow-x-auto pb-4" style="scroll-snap-type: x mandatory;">
+        <% surpriseCardsSection.forEach(card => { %>
+          <div class="shrink-0 w-64 card-panel" style="scroll-snap-align: start;" data-reveal>
+            <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full mb-3 <%= card.badgeClass %>"><%= card.badge %></span>
+
+            <div class="sc-root" style="border-radius: 14px; overflow: hidden; height: 150px; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, #FEF6E7, #fff); position: relative;">
+              <% if (card.preview === 'giftbox') { %>
+                <div class="text-center">
+                  <svg class="sc-mini-giftbox" viewBox="0 0 160 160" width="64" height="64" fill="none">
+                    <rect x="20" y="70" width="120" height="80" rx="8" fill="#B45309" />
+                    <rect x="10" y="50" width="140" height="26" rx="8" fill="#92400E" />
+                    <rect x="70" y="20" width="20" height="130" fill="#F43F5E" />
+                    <rect x="10" y="56" width="140" height="14" fill="#F43F5E" />
+                    <circle cx="80" cy="30" r="16" fill="#F43F5E" />
+                  </svg>
+                  <p class="sc-hand" style="font-size: 1.1rem; margin-top: 0.4rem; color: #92400E;">Tap to open</p>
+                </div>
+              <% } else if (card.preview === 'apology') { %>
+                <div class="sc-mini-sway" style="position: relative; width: 70px; height: 70px;">
+                  <%- include('../partials/mood-character-svg', { mood: 'bunny' }) %>
+                  <div style="position: absolute; bottom: -4px; right: -30px; background: #FFFDFB; border-radius: 8px; box-shadow: 0 6px 16px rgba(74,59,54,0.12); padding: 0.2rem 0.6rem;">
+                    <span class="sc-hand" style="font-size: 1rem; color: #4A3B36;">sorry...</span>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+
+            <h3 class="font-semibold text-lg mt-4"><%= card.name %></h3>
+            <a href="<%= card.createUrl %>" class="btn-primary mt-3 block text-center">Create now ✨</a>
+          </div>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <!-- ===================== CHOOSE OCCASION ===================== -->
+  <section id="birthday" class="py-16 scroll-mt-20">
+    <a id="proposal" class="block -mt-16 pt-16" aria-hidden="true"></a>
+    <h2 class="text-3xl font-display font-semibold text-center mb-3">Choose your occasion</h2>
+    <p class="text-center text-stone-500 mb-10 max-w-lg mx-auto">Both experiences are built to feel personal from the very first tap.</p>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <% enabledOccasions.forEach(occ => {
+        const o = content.occasions[occ];
+        const isProposal = occ === 'proposal';
+      %>
+        <div
+          class="card-panel flex flex-col border-2 <%= isProposal ? 'border-rose-100' : 'border-amber-100' %>"
+          data-reveal
+        >
+          <div class="text-4xl mb-2"><%= o.emoji %></div>
+          <h3 class="text-xl font-display font-semibold <%= isProposal ? 'text-rose-600' : 'text-amber-700' %>"><%= o.label %></h3>
+          <p class="text-xs text-stone-400 mt-1 mb-3"><%= o.tagline %></p>
+          <p class="text-sm text-stone-500 mb-4"><%= o.description %></p>
+          <ul class="space-y-1.5 text-sm text-stone-600 mb-6 flex-1">
+            <% o.includes.forEach(item => { %>
+              <li class="flex items-start gap-2"><span class="<%= isProposal ? 'text-rose-500' : 'text-amber-600' %>">✓</span> <%= item %></li>
+            <% }) %>
+          </ul>
+          <div class="flex gap-3">
+            <% const demoTemplate = templatesByOccasion[occ][0]; %>
+            <% if (demoTemplate && settings.features?.demoPreviewsEnabled !== false) { %>
+              <a href="/demo/<%= demoTemplate.slug %>" class="btn-secondary flex-1 text-center">Try demo</a>
+            <% } %>
+            <a
+              href="<% if (currentUser) { %>/dashboard/cards/new?occasion=<%= occ %><% } else { %>/register?redirect=<%= encodeURIComponent('/dashboard/cards/new?occasion=' + occ) %><% } %>"
+              class="flex-1 text-center font-semibold px-4 py-2.5 rounded-xl2 text-white <%= isProposal ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700' %> transition"
+            >Create now</a>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <!-- ===================== HOW IT WORKS ===================== -->
+  <section id="how-it-works" class="py-16 scroll-mt-20">
+    <h2 class="text-3xl font-display font-semibold text-center mb-10">How it works</h2>
+    <div class="grid sm:grid-cols-3 gap-6">
+      <% content.howItWorks.forEach((step, i) => { %>
+        <div class="card-panel text-center" data-reveal>
+          <div class="text-3xl mb-3"><%= step.icon %></div>
+          <h3 class="font-semibold mb-1"><%= i + 1 %>. <%= step.title %></h3>
+          <p class="text-sm text-stone-500"><%= step.text %></p>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <!-- ===================== LIVE DEMOS ===================== -->
+  <% if (settings.features?.demoPreviewsEnabled !== false) { %>
+  <section class="py-16">
+    <h2 class="text-3xl font-display font-semibold text-center mb-8">See it in action</h2>
+    <div class="flex justify-center gap-2 mb-8" role="tablist">
+      <% enabledOccasions.forEach((occ, i) => { %>
+        <button type="button" class="demo-tab <%= i === 0 ? 'btn-primary' : 'btn-secondary' %> px-5 py-2 text-sm" data-demo-tab="<%= occ %>" aria-selected="<%= i === 0 %>">
+          <%= occ === 'proposal' ? '💌 Proposal' : '🎂 Birthday' %>
+        </button>
+      <% }) %>
+    </div>
+
+    <% enabledOccasions.forEach((occ, i) => { %>
+      <div class="demo-panel grid sm:grid-cols-3 gap-5" data-demo-panel="<%= occ %>" <%= i !== 0 ? 'hidden' : '' %>>
+        <% templatesByOccasion[occ].forEach(tpl => { %>
+          <div class="card-panel text-center" data-reveal>
+            <% if (tpl.thumbnail) { %>
+              <img src="<%= tpl.thumbnail %>" alt="<%= tpl.name %>" loading="lazy" class="w-full h-32 object-cover rounded-xl2 mb-3 bg-stone-100" />
+            <% } else { %>
+              <div class="w-full h-32 rounded-xl2 mb-3 bg-gradient-to-br from-amber-50 to-rose-50 flex items-center justify-center text-3xl">🎨</div>
+            <% } %>
+            <h4 class="font-semibold text-sm mb-3"><%= tpl.name %></h4>
+            <a href="/demo/<%= tpl.slug %>" class="btn-secondary text-xs px-3 py-1.5">Preview</a>
+          </div>
+        <% }) %>
+        <% if (!templatesByOccasion[occ].length) { %>
+          <p class="text-stone-500 col-span-3 text-center">Demos coming soon.</p>
+        <% } %>
+      </div>
+    <% }) %>
+  </section>
+  <% } %>
+
+  <!-- ===================== FEATURE SPOTLIGHT ===================== -->
+  <section class="py-16 space-y-14">
+    <% content.featureSpotlight.forEach((feat, i) => {
+      const accent = feat.occasion === 'proposal' ? 'rose' : 'amber';
+    %>
+      <div class="grid md:grid-cols-2 gap-8 items-center <%= i % 2 === 1 ? 'md:[&>*:first-child]:order-2' : '' %>" data-reveal>
+        <div class="card-panel h-56 flex items-center justify-center text-6xl bg-gradient-to-br from-<%= accent %>-50 to-white">
+          <%= feat.occasion === 'proposal' ? '💌' : feat.occasion === 'birthday' ? '🎂' : '✨' %>
+        </div>
+        <div>
+          <h3 class="text-2xl font-display font-semibold mb-3 text-<%= accent %>-600"><%= feat.title %></h3>
+          <p class="text-stone-500"><%= feat.text %></p>
+        </div>
+      </div>
+    <% }) %>
+
+    <div class="flex flex-wrap justify-center gap-6 pt-4" data-reveal>
+      <% content.commonFeatures.forEach(f => { %>
+        <div class="flex items-center gap-2 text-sm font-semibold text-stone-600">
+          <span class="text-xl"><%= f.icon %></span> <%= f.label %>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <!-- ===================== PRICING ===================== -->
+  <section id="pricing" class="py-16 scroll-mt-20">
+    <h2 class="text-3xl font-display font-semibold text-center mb-8">Simple pricing</h2>
+    <div class="flex justify-center gap-2 mb-10" role="tablist">
+      <% enabledOccasions.forEach((occ, i) => { %>
+        <button type="button" class="pricing-tab <%= i === 0 ? 'btn-primary' : 'btn-secondary' %> px-5 py-2 text-sm" data-pricing-tab="<%= occ %>" aria-selected="<%= i === 0 %>">
+          <%= occ === 'proposal' ? '💌 Proposal' : '🎂 Birthday' %>
+        </button>
+      <% }) %>
+    </div>
+
+    <% enabledOccasions.forEach((occ, i) => { %>
+      <div class="pricing-panel grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto" data-pricing-panel="<%= occ %>" <%= i !== 0 ? 'hidden' : '' %>>
+        <% plansByOccasion[occ].forEach(plan => { %>
+          <div class="card-panel flex flex-col relative <%= plan.isPopular ? (occ === 'proposal' ? 'border-2 border-rose-400' : 'border-2 border-amber-500') : '' %>" data-reveal>
+            <% if (plan.isPopular) { %>
+              <span class="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-semibold px-3 py-1 rounded-full <%= occ === 'proposal' ? 'bg-rose-600' : 'bg-amber-600' %> text-white">Most popular</span>
+            <% } %>
+            <h3 class="font-semibold text-lg"><%= plan.name %></h3>
+            <p class="text-3xl font-semibold <%= occ === 'proposal' ? 'text-rose-600' : 'text-amber-600' %> mt-2">₹<%= plan.price %></p>
+            <p class="text-xs text-stone-400 mt-1"><%= plan.validityDays %> days live</p>
+            <ul class="mt-4 space-y-2 text-sm text-stone-500 flex-1">
+              <% (plan.features || []).forEach(f => { %>
+                <li>✓ <%= f %></li>
+              <% }) %>
+            </ul>
+            <a
+              href="<% if (currentUser) { %>/dashboard/cards/new?occasion=<%= occ %><% } else { %>/register?redirect=<%= encodeURIComponent('/dashboard/cards/new?occasion=' + occ) %><% } %>"
+              class="btn-primary mt-6 text-center"
+            >Choose plan</a>
+          </div>
+        <% }) %>
+        <% if (!plansByOccasion[occ].length) { %>
+          <p class="text-stone-500 col-span-3 text-center">Pricing coming soon.</p>
+        <% } %>
+      </div>
+    <% }) %>
+  </section>
+
+  <!-- ===================== REVIEWS ===================== -->
+  <% if (reviews.length) { %>
+    <section class="py-16">
+      <h2 class="text-3xl font-display font-semibold text-center mb-10">What people are saying</h2>
+      <div class="grid sm:grid-cols-3 gap-6">
+        <% reviews.forEach(review => { %>
+          <div class="card-panel" data-reveal>
+            <div class="text-amber-500 mb-2"><%= '★'.repeat(review.rating) %><span class="text-stone-200"><%= '★'.repeat(5 - review.rating) %></span></div>
+            <p class="text-sm text-stone-600 mb-3">"<%= review.text %>"</p>
+            <p class="text-xs font-semibold text-stone-400">
+              <%= review.name %> &middot; <%= review.occasion === 'proposal' ? '💌 Proposal' : '🎂 Birthday' %>
+            </p>
+          </div>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <!-- ===================== FAQ ===================== -->
+  <section id="faq" class="py-16 scroll-mt-20 max-w-2xl mx-auto">
+    <h2 class="text-3xl font-display font-semibold text-center mb-10">Frequently asked questions</h2>
+    <div class="space-y-3">
+      <% content.faq.forEach((item, i) => { %>
+        <div class="card-panel" data-reveal>
+          <button type="button" class="faq-toggle w-full flex items-center justify-between text-left font-semibold" data-faq-toggle="<%= i %>">
+            <span><%= item.q %></span>
+            <span class="faq-chevron transition-transform">⌄</span>
+          </button>
+          <div class="faq-answer hidden mt-3 text-sm text-stone-500" data-faq-answer="<%= i %>"><%= item.a %></div>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <!-- ===================== FINAL CTA ===================== -->
+  <section class="py-16 text-center" data-reveal>
+    <h2 class="text-3xl font-display font-semibold mb-6"><%= content.finalCta.headline %></h2>
+    <div class="flex flex-wrap justify-center gap-3">
+      <% if (enabledOccasions.includes('birthday')) { %>
+        <a href="/dashboard/cards/new?occasion=birthday" class="btn-primary text-base px-6 py-3">🎂 Create Birthday Wish</a>
+      <% } %>
+      <% if (enabledOccasions.includes('proposal')) { %>
+        <a href="/dashboard/cards/new?occasion=proposal" class="text-base px-6 py-3 rounded-xl2 font-semibold bg-rose-600 text-white hover:bg-rose-700 transition">💌 Create Love Proposal</a>
+      <% } %>
+    </div>
+  </section>
+</div>
+
+<style>
+  .float-slow { animation: floatY 7s ease-in-out infinite; }
+  .float-med { animation: floatY 5.5s ease-in-out infinite; }
+  .float-fast { animation: floatY 4s ease-in-out infinite; }
+  @keyframes floatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .float-slow, .float-med, .float-fast { animation: none; }
+  }
+
+  .phone-mock {
+    width: 140px; height: 280px;
+    border-radius: 2rem;
+    background: #1c1917;
+    padding: 10px;
+    transform: rotate(var(--tilt, 0deg));
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.25);
+  }
+  .phone-mock-screen {
+    width: 100%; height: 100%;
+    border-radius: 1.5rem;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 1rem;
+    overflow: hidden;
+  }
+  .phone-loop { animation: phoneLoop 2.4s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .phone-loop { animation: none; }
+  }
+  @keyframes phoneLoop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+  [data-reveal] { opacity: 1; }
+
+  /* ===== Surprise Cards teaser row ===== */
+  #scCardsRow { scrollbar-width: none; }
+  #scCardsRow::-webkit-scrollbar { display: none; }
+  .sc-mini-giftbox { animation: sc-mini-wiggle 2.4s ease-in-out infinite; transform-origin: 50% 85%; }
+  @keyframes sc-mini-wiggle { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+  .sc-mini-sway { animation: sc-mini-sway-kf 4s ease-in-out infinite; }
+  @keyframes sc-mini-sway-kf { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .sc-mini-giftbox, .sc-mini-sway { animation: none; }
+  }
+</style>
+
+<script>
+  (function () {
+    // Tabs (demo + pricing) — simple show/hide, no framework needed.
+    function wireTabs(tabSelector, panelSelector, dataKey) {
+      document.querySelectorAll(tabSelector).forEach((tab) => {
+        tab.addEventListener('click', () => {
+          const target = tab.getAttribute(dataKey);
+          document.querySelectorAll(tabSelector).forEach((t) => {
+            const active = t === tab;
+            t.setAttribute('aria-selected', String(active));
+            t.classList.toggle('btn-primary', active);
+            t.classList.toggle('btn-secondary', !active);
+          });
+          document.querySelectorAll(panelSelector).forEach((p) => {
+            p.hidden = p.getAttribute(dataKey.replace('data-', 'data-').replace('-tab', '-panel')) !== target;
+          });
+        });
+      });
+    }
+    wireTabs('[data-demo-tab]', '[data-demo-panel]', 'data-demo-tab');
+    wireTabs('[data-pricing-tab]', '[data-pricing-panel]', 'data-pricing-tab');
+
+    // Surprise Cards row — desktop arrows scroll the native overflow-x row;
+    // mobile just swipes it directly, no JS needed for that part.
+    const scRow = document.getElementById('scCardsRow');
+    const scPrev = document.getElementById('scCardsPrev');
+    const scNext = document.getElementById('scCardsNext');
+    if (scRow && scPrev && scNext) {
+      scPrev.addEventListener('click', () => scRow.scrollBy({ left: -280, behavior: 'smooth' }));
+      scNext.addEventListener('click', () => scRow.scrollBy({ left: 280, behavior: 'smooth' }));
+    }
+
+    // FAQ accordion.
+    document.querySelectorAll('[data-faq-toggle]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-faq-toggle');
+        const answer = document.querySelector('[data-faq-answer="' + id + '"]');
+        const chevron = btn.querySelector('.faq-chevron');
+        const isOpen = !answer.classList.contains('hidden');
+        answer.classList.toggle('hidden', isOpen);
+        if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+      });
+    });
+
+    // Pause looping/floating animations while off-screen (perf), and skip
+    // entirely for reduced-motion users (CSS already no-ops the keyframes,
+    // this just avoids wasted observer work).
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!prefersReducedMotion && 'IntersectionObserver' in window) {
+      const animated = document.querySelectorAll('.phone-loop, [data-float-bg] > *');
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          entry.target.style.animationPlayState = entry.isIntersecting ? 'running' : 'paused';
+        });
+      }, { threshold: 0.1 });
+      animated.forEach((el) => io.observe(el));
+    }
+
+    // Lightweight GSAP ScrollTrigger reveal — fails silently if GSAP didn't load.
+    if (window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+      if (!prefersReducedMotion) {
+        gsap.utils.toArray('[data-reveal]').forEach((el) => {
+          gsap.fromTo(
+            el,
+            { opacity: 0, y: 24 },
+            {
+              opacity: 1, y: 0, duration: 0.6, ease: 'power2.out',
+              scrollTrigger: { trigger: el, start: 'top 85%' },
+            }
+          );
+        });
+      }
+    }
+  })();
+</script>
+
+<%- include('../layouts/landing-foot') %>

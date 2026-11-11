@@ -1,0 +1,34 @@
+<%- include('../layouts/main-head', { title }) %>
+
+<div class="max-w-md mx-auto card-panel">
+  <h2 class="text-2xl font-semibold mb-1">Create your account</h2>
+  <p class="text-stone-500 mb-6">Start building beautiful birthday surprises.</p>
+
+  <form action="/register" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <% if (typeof redirectTo !== 'undefined' && redirectTo) { %><input type="hidden" name="redirectTo" value="<%= redirectTo %>" /><% } %>
+    <div>
+      <label class="label" for="name">Full name</label>
+      <input class="input-field" type="text" id="name" name="name" value="<%= oldInput.name || '' %>" required />
+    </div>
+    <div>
+      <label class="label" for="email">Email</label>
+      <input class="input-field" type="email" id="email" name="email" value="<%= oldInput.email || '' %>" required />
+    </div>
+    <div>
+      <label class="label" for="phone">Phone (optional)</label>
+      <input class="input-field" type="tel" id="phone" name="phone" value="<%= oldInput.phone || '' %>" />
+    </div>
+    <div>
+      <label class="label" for="password">Password</label>
+      <input class="input-field" type="password" id="password" name="password" minlength="8" required />
+    </div>
+    <button type="submit" class="btn-primary w-full">Create account</button>
+  </form>
+
+  <p class="text-sm text-stone-500 mt-6 text-center">
+    Already have an account?
+    <a href="/login<%= typeof redirectTo !== 'undefined' && redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : '' %>" class="text-amber-700 font-semibold">Log in</a>
+  </p>
+</div>
+
+<%- include('../layouts/main-foot') %>

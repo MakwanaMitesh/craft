@@ -1,0 +1,17 @@
+      </main>
+    </div>
+  </div>
+  <script>
+    const toggle = document.getElementById('sidebarToggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        document.querySelector('aside').classList.toggle('hidden');
+        document.querySelector('aside').classList.toggle('flex');
+        document.querySelector('aside').classList.toggle('fixed');
+        document.querySelector('aside').classList.toggle('inset-0');
+        document.querySelector('aside').classList.toggle('z-50');
+      });
+    }
+  </script>
+</body>
+</html>

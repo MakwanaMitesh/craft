@@ -1,0 +1,28 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<%- include('../partials/wizard-steps', { step }) %>
+
+<div class="max-w-xl card-panel">
+  <% if (card.photos && card.photos.length) { %>
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <% card.photos.forEach(p => { %>
+        <img src="<%= p %>" alt="Uploaded photo" class="w-20 h-20 object-cover rounded-lg" />
+      <% }) %>
+    </div>
+  <% } %>
+
+  <form action="/dashboard/cards/<%= card._id %>/build/photos" method="POST" enctype="multipart/form-data" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div>
+      <label class="label" for="photos">Photos (optional, up to <%= maxPhotos %>)</label>
+      <input class="input-field" type="file" id="photos" name="photos" accept="image/jpeg,image/png,image/webp" multiple />
+      <p class="text-xs text-stone-400 mt-1">Photos are automatically compressed. Uploading new ones replaces the current set.</p>
+    </div>
+
+    <div class="flex items-center justify-between pt-2">
+      <a href="/dashboard/cards/<%= card._id %>/build/details" class="btn-secondary">&larr; Back</a>
+      <button type="submit" class="btn-primary">Continue</button>
+    </div>
+  </form>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

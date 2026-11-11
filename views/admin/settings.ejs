@@ -1,0 +1,433 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<%
+  const tabs = [
+    { key: 'general', label: 'General' },
+    { key: 'contact', label: 'Contact' },
+    { key: 'homepage', label: 'Homepage' },
+    { key: 'seo', label: 'SEO' },
+    { key: 'features', label: 'Features' },
+    { key: 'payments', label: 'Payments' },
+    { key: 'email', label: 'Email' },
+    { key: 'uploads', label: 'Uploads' },
+    { key: 'legal', label: 'Legal pages' },
+  ];
+%>
+
+<div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+  <div class="flex gap-2 overflow-x-auto pb-1">
+    <% tabs.forEach(t => { %>
+      <a
+        href="/admin/settings?tab=<%= t.key %>"
+        class="shrink-0 px-4 py-2 rounded-xl2 text-sm font-semibold <%= tab === t.key ? 'bg-amber-600 text-white' : 'bg-white border border-amber-100 text-stone-600 hover:bg-amber-50' %>"
+      ><%= t.label %></a>
+    <% }) %>
+  </div>
+  <a href="/admin/audit-log" class="text-sm text-amber-700 font-semibold whitespace-nowrap">View audit log &rarr;</a>
+</div>
+
+<% if (tab === 'general') { %>
+  <div class="max-w-lg card-panel">
+    <form action="/admin/settings/general" method="POST" enctype="multipart/form-data" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div>
+        <label class="label" for="siteName">Site name</label>
+        <input class="input-field" type="text" id="siteName" name="siteName" value="<%= settings.siteName %>" required />
+      </div>
+      <div>
+        <label class="label" for="tagline">Tagline</label>
+        <input class="input-field" type="text" id="tagline" name="tagline" value="<%= settings.tagline %>" />
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="label" for="logoLight">Logo (light background)</label>
+          <% if (settings.logoLight) { %><img src="<%= settings.logoLight %>" class="h-10 mb-2 bg-stone-100 rounded" /><% } %>
+          <input class="input-field" type="file" id="logoLight" name="logoLight" accept="image/jpeg,image/png,image/webp" />
+        </div>
+        <div>
+          <label class="label" for="logoDark">Logo (dark background)</label>
+          <% if (settings.logoDark) { %><img src="<%= settings.logoDark %>" class="h-10 mb-2 bg-stone-800 rounded" /><% } %>
+          <input class="input-field" type="file" id="logoDark" name="logoDark" accept="image/jpeg,image/png,image/webp" />
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="label" for="favicon">Favicon</label>
+          <% if (settings.favicon) { %><img src="<%= settings.favicon %>" class="h-8 mb-2" /><% } %>
+          <input class="input-field" type="file" id="favicon" name="favicon" accept="image/png,image/x-icon,image/webp" />
+        </div>
+        <div>
+          <label class="label" for="ogImage">Default OG image</label>
+          <% if (settings.ogImage) { %><img src="<%= settings.ogImage %>" class="h-10 mb-2 rounded" /><% } %>
+          <input class="input-field" type="file" id="ogImage" name="ogImage" accept="image/jpeg,image/png,image/webp" />
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="label" for="primaryColor">Primary color</label>
+          <input class="input-field h-11" type="color" id="primaryColor" name="primaryColor" value="<%= settings.primaryColor %>" />
+        </div>
+        <div>
+          <label class="label" for="accentColor">Accent color</label>
+          <input class="input-field h-11" type="color" id="accentColor" name="accentColor" value="<%= settings.accentColor %>" />
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="label" for="currencyCode">Currency code</label>
+          <input class="input-field" type="text" id="currencyCode" name="currencyCode" value="<%= settings.currencyCode %>" maxlength="3" />
+        </div>
+        <div>
+          <label class="label" for="currencySymbol">Currency symbol</label>
+          <input class="input-field" type="text" id="currencySymbol" name="currencySymbol" value="<%= settings.currencySymbol %>" maxlength="3" />
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="label" for="timezone">Timezone</label>
+          <input class="input-field" type="text" id="timezone" name="timezone" value="<%= settings.timezone %>" placeholder="Asia/Kolkata" />
+        </div>
+        <div>
+          <label class="label" for="dateFormat">Date format</label>
+          <input class="input-field" type="text" id="dateFormat" name="dateFormat" value="<%= settings.dateFormat %>" placeholder="DD MMM YYYY" />
+        </div>
+      </div>
+      <button type="submit" class="btn-primary w-full">Save general settings</button>
+    </form>
+  </div>
+<% } %>
+
+<% if (tab === 'contact') { %>
+  <div class="max-w-lg card-panel">
+    <form action="/admin/settings/contact" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div>
+        <label class="label" for="supportEmail">Support email</label>
+        <input class="input-field" type="email" id="supportEmail" name="supportEmail" value="<%= settings.supportEmail %>" required />
+      </div>
+      <div>
+        <label class="label" for="phone">Phone</label>
+        <input class="input-field" type="text" id="phone" name="phone" value="<%= settings.contact.phone %>" />
+      </div>
+      <div>
+        <label class="label" for="whatsappNumber">WhatsApp number (for the floating button)</label>
+        <input class="input-field" type="text" id="whatsappNumber" name="whatsappNumber" value="<%= settings.contact.whatsappNumber %>" placeholder="919876543210 (country code, no +)" />
+      </div>
+      <div>
+        <label class="label" for="address">Business address</label>
+        <textarea class="input-field" id="address" name="address" rows="2"><%= settings.contact.address %></textarea>
+      </div>
+      <div class="pt-2 border-t border-amber-100">
+        <p class="label mb-2">Social links</p>
+        <div class="space-y-3">
+          <input class="input-field" type="url" name="instagramUrl" value="<%= settings.social.instagramUrl %>" placeholder="Instagram URL" />
+          <input class="input-field" type="url" name="facebookUrl" value="<%= settings.social.facebookUrl %>" placeholder="Facebook URL" />
+          <input class="input-field" type="url" name="twitterUrl" value="<%= settings.social.twitterUrl %>" placeholder="Twitter / X URL" />
+          <input class="input-field" type="url" name="youtubeUrl" value="<%= settings.social.youtubeUrl %>" placeholder="YouTube URL" />
+        </div>
+      </div>
+      <button type="submit" class="btn-primary w-full">Save contact settings</button>
+    </form>
+  </div>
+<% } %>
+
+<% if (tab === 'homepage') { %>
+  <div class="max-w-2xl card-panel">
+    <form action="/admin/settings/homepage" method="POST" class="space-y-5" id="homepageForm"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div>
+        <label class="label" for="heroHeadline">Hero headline</label>
+        <input class="input-field" type="text" id="heroHeadline" name="heroHeadline" value="<%= settings.homepage.heroHeadline %>" placeholder="Surprise them with a website made just for them" />
+      </div>
+      <div>
+        <label class="label" for="heroSubline">Hero subline</label>
+        <input class="input-field" type="text" id="heroSubline" name="heroSubline" value="<%= settings.homepage.heroSubline %>" />
+      </div>
+
+      <div class="pt-2 border-t border-amber-100">
+        <div class="flex items-center justify-between mb-2">
+          <p class="label mb-0">FAQ items</p>
+          <button type="button" id="addFaqBtn" class="btn-secondary text-xs px-2 py-1">+ Add question</button>
+        </div>
+        <div id="faqList" class="space-y-3">
+          <% (settings.homepage.faq.length ? settings.homepage.faq : []).sort((a,b) => a.order - b.order).forEach((f, i) => { %>
+            <div class="faq-row card-panel bg-amber-50/40 flex gap-2 items-start">
+              <div class="flex-1 space-y-2">
+                <input class="input-field" type="text" name="faq[<%= i %>][question]" value="<%= f.question %>" placeholder="Question" />
+                <textarea class="input-field" name="faq[<%= i %>][answer]" rows="2" placeholder="Answer"><%= f.answer %></textarea>
+                <input type="hidden" name="faq[<%= i %>][order]" class="faq-order" value="<%= i %>" />
+              </div>
+              <button type="button" class="btn-danger text-xs px-2 py-1 remove-faq">✕</button>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-amber-100">
+        <p class="label mb-2">Announcement bar</p>
+        <div class="space-y-2">
+          <input class="input-field" type="text" name="announcementText" value="<%= settings.homepage.announcementText %>" placeholder="Announcement text" />
+          <input class="input-field" type="url" name="announcementLink" value="<%= settings.homepage.announcementLink %>" placeholder="Link (optional)" />
+          <p class="text-xs text-stone-400">Only shows if the "Announcement bar" feature toggle is on.</p>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary w-full">Save homepage content</button>
+    </form>
+  </div>
+
+  <template id="faqRowTemplate">
+    <div class="faq-row card-panel bg-amber-50/40 flex gap-2 items-start">
+      <div class="flex-1 space-y-2">
+        <input class="input-field" type="text" name="faq[__i__][question]" placeholder="Question" />
+        <textarea class="input-field" name="faq[__i__][answer]" rows="2" placeholder="Answer"></textarea>
+        <input type="hidden" name="faq[__i__][order]" class="faq-order" value="__i__" />
+      </div>
+      <button type="button" class="btn-danger text-xs px-2 py-1 remove-faq">✕</button>
+    </div>
+  </template>
+
+  <script>
+    (function () {
+      const list = document.getElementById('faqList');
+      const template = document.getElementById('faqRowTemplate');
+
+      function renumber() {
+        list.querySelectorAll('.faq-row').forEach((row, i) => {
+          row.querySelectorAll('input[name*="[question]"], textarea[name*="[answer]"], input.faq-order').forEach((el) => {
+            el.name = el.name.replace(/faq\[\d+\]/, `faq[${i}]`);
+          });
+          const orderInput = row.querySelector('.faq-order');
+          if (orderInput) orderInput.value = i;
+        });
+      }
+
+      document.getElementById('addFaqBtn').addEventListener('click', () => {
+        const html = template.innerHTML.replace(/__i__/g, list.children.length);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html.trim();
+        list.appendChild(wrapper.firstChild);
+        renumber();
+      });
+
+      list.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-faq')) {
+          e.target.closest('.faq-row').remove();
+          renumber();
+        }
+      });
+    })();
+  </script>
+<% } %>
+
+<% if (tab === 'seo') { %>
+  <div class="max-w-lg card-panel">
+    <form action="/admin/settings/seo" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div>
+        <label class="label" for="metaTitle">Meta title</label>
+        <input class="input-field" type="text" id="metaTitle" name="metaTitle" value="<%= settings.seo.metaTitle %>" />
+      </div>
+      <div>
+        <label class="label" for="metaDescription">Meta description</label>
+        <textarea class="input-field" id="metaDescription" name="metaDescription" rows="3"><%= settings.seo.metaDescription %></textarea>
+      </div>
+      <div>
+        <label class="label" for="metaKeywords">Keywords (comma separated)</label>
+        <input class="input-field" type="text" id="metaKeywords" name="metaKeywords" value="<%= settings.seo.metaKeywords %>" />
+      </div>
+      <div>
+        <label class="label" for="googleAnalyticsId">Google Analytics ID</label>
+        <input class="input-field" type="text" id="googleAnalyticsId" name="googleAnalyticsId" value="<%= settings.seo.googleAnalyticsId %>" placeholder="G-XXXXXXXXXX" />
+      </div>
+      <div>
+        <label class="label" for="metaPixelId">Meta Pixel ID</label>
+        <input class="input-field" type="text" id="metaPixelId" name="metaPixelId" value="<%= settings.seo.metaPixelId %>" />
+      </div>
+      <button type="submit" class="btn-primary w-full">Save SEO settings</button>
+    </form>
+  </div>
+<% } %>
+
+<% if (tab === 'features') { %>
+  <%
+    const featureList = [
+      ['birthdayEnabled', 'Birthday occasion enabled'],
+      ['proposalEnabled', 'Proposal occasion enabled'],
+      ['registrationsOpen', 'New user registrations open'],
+      ['reviewsEnabled', 'Reviews section on the homepage'],
+      ['announcementBarEnabled', 'Announcement bar'],
+      ['whatsappButtonEnabled', 'Floating WhatsApp button'],
+      ['cardViewTrackingEnabled', 'Card view tracking'],
+      ['emailNotificationsEnabled', 'Email notifications to owners'],
+      ['demoPreviewsEnabled', 'Demo previews on homepage'],
+      ['poweredByFooterEnabled', `"Made with ${settings.siteName}" footer on public cards`],
+    ];
+  %>
+  <div class="max-w-lg card-panel">
+    <form action="/admin/settings/features" method="POST" class="space-y-3"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <% featureList.forEach(([key, label]) => { %>
+        <label class="flex items-center justify-between gap-3 text-sm font-semibold text-stone-700 py-1">
+          <span><%= label %></span>
+          <input type="checkbox" name="<%= key %>" class="rounded border-stone-300 w-5 h-5" <%= settings.features[key] ? 'checked' : '' %> />
+        </label>
+      <% }) %>
+      <label class="flex items-center justify-between gap-3 text-sm font-semibold text-rose-700 py-1 border-t border-amber-100 pt-3 mt-2">
+        <span>Maintenance mode (only admins can use the site)</span>
+        <input type="checkbox" name="maintenanceMode" class="rounded border-stone-300 w-5 h-5" <%= settings.maintenanceMode ? 'checked' : '' %> />
+      </label>
+      <button type="submit" class="btn-primary w-full mt-2">Save feature toggles</button>
+    </form>
+  </div>
+<% } %>
+
+<% if (tab === 'payments') { %>
+  <div class="max-w-lg card-panel">
+    <form action="/admin/settings/payments" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div>
+        <label class="label" for="razorpayMode">Mode</label>
+        <select class="input-field" id="razorpayMode" name="razorpayMode">
+          <option value="test" <%= settings.razorpayMode !== 'live' ? 'selected' : '' %>>Test</option>
+          <option value="live" <%= settings.razorpayMode === 'live' ? 'selected' : '' %>>Live</option>
+        </select>
+      </div>
+      <div>
+        <label class="label" for="razorpayKeyId">Razorpay key ID</label>
+        <input class="input-field" type="text" id="razorpayKeyId" name="razorpayKeyId" value="<%= settings.razorpayKeyId %>" />
+      </div>
+      <div>
+        <label class="label" for="razorpayKeySecret">Razorpay key secret</label>
+        <input
+          class="input-field" type="password" id="razorpayKeySecret" name="razorpayKeySecret"
+          placeholder="<%= settings.razorpayKeySecret ? '•'.repeat(12) + settings.razorpayKeySecret.slice(-4) : 'Not set' %>"
+        />
+        <p class="text-xs text-stone-400 mt-1">Encrypted at rest. Leave blank to keep the current secret.</p>
+      </div>
+      <div>
+        <label class="label" for="gstPercentage">GST percentage</label>
+        <input class="input-field" type="number" id="gstPercentage" name="gstPercentage" min="0" max="100" step="0.01" value="<%= settings.gstPercentage %>" />
+      </div>
+      <div class="pt-2 border-t border-amber-100">
+        <p class="label mb-2">Invoice business details</p>
+        <div class="space-y-3">
+          <input class="input-field" type="text" name="invoiceBusinessName" value="<%= settings.invoiceBusiness.name %>" placeholder="Business name" />
+          <textarea class="input-field" name="invoiceBusinessAddress" rows="2" placeholder="Business address"><%= settings.invoiceBusiness.address %></textarea>
+          <input class="input-field" type="text" name="invoiceBusinessGstNumber" value="<%= settings.invoiceBusiness.gstNumber %>" placeholder="GST number" />
+        </div>
+      </div>
+      <button type="submit" class="btn-primary w-full">Save payment settings</button>
+    </form>
+  </div>
+<% } %>
+
+<% if (tab === 'email') { %>
+  <div class="max-w-lg card-panel mb-6">
+    <form action="/admin/settings/email" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div>
+        <label class="label" for="smtpHost">SMTP host</label>
+        <input class="input-field" type="text" id="smtpHost" name="smtpHost" value="<%= settings.smtp.host %>" />
+      </div>
+      <div>
+        <label class="label" for="smtpPort">SMTP port</label>
+        <input class="input-field" type="number" id="smtpPort" name="smtpPort" value="<%= settings.smtp.port %>" />
+      </div>
+      <div>
+        <label class="label" for="smtpUser">SMTP user</label>
+        <input class="input-field" type="text" id="smtpUser" name="smtpUser" value="<%= settings.smtp.user %>" />
+      </div>
+      <div>
+        <label class="label" for="smtpPassword">SMTP password</label>
+        <input
+          class="input-field" type="password" id="smtpPassword" name="smtpPassword"
+          placeholder="<%= settings.smtp.password ? '•'.repeat(12) : 'Not set' %>"
+        />
+        <p class="text-xs text-stone-400 mt-1">Encrypted at rest. Leave blank to keep the current password.</p>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="label" for="fromName">From name</label>
+          <input class="input-field" type="text" id="fromName" name="fromName" value="<%= settings.smtp.fromName %>" />
+        </div>
+        <div>
+          <label class="label" for="fromEmail">From email</label>
+          <input class="input-field" type="email" id="fromEmail" name="fromEmail" value="<%= settings.smtp.fromEmail %>" />
+        </div>
+      </div>
+      <button type="submit" class="btn-primary w-full">Save email settings</button>
+    </form>
+  </div>
+
+  <div class="max-w-lg card-panel">
+    <h3 class="font-semibold mb-3">Send a test email</h3>
+    <form action="/admin/settings/email/test" method="POST" class="flex gap-2"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <input class="input-field" type="email" name="testEmailTo" placeholder="you@example.com" required />
+      <button type="submit" class="btn-secondary whitespace-nowrap">Send test email</button>
+    </form>
+  </div>
+<% } %>
+
+<% if (tab === 'uploads') { %>
+  <%
+    const allAllowedTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    const currentTypes = settings.uploads.allowedFileTypes || [];
+  %>
+  <div class="max-w-lg card-panel">
+    <form action="/admin/settings/uploads" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div>
+        <label class="label" for="maxPhotoSizeMB">Max photo size (MB)</label>
+        <input class="input-field" type="number" id="maxPhotoSizeMB" name="maxPhotoSizeMB" min="1" max="25" value="<%= settings.uploads.maxPhotoSizeMB %>" required />
+      </div>
+      <div>
+        <label class="label" for="maxPhotosPerCard">Max photos per card</label>
+        <input class="input-field" type="number" id="maxPhotosPerCard" name="maxPhotosPerCard" min="1" max="30" value="<%= settings.uploads.maxPhotosPerCard %>" required />
+      </div>
+      <div>
+        <p class="label mb-2">Allowed file types</p>
+        <div class="flex gap-4 flex-wrap">
+          <% allAllowedTypes.forEach(ext => { %>
+            <label class="flex items-center gap-2 text-sm font-semibold text-stone-700">
+              <input type="checkbox" name="allowedFileTypes" value="<%= ext %>" class="rounded border-stone-300" <%= currentTypes.includes(ext) ? 'checked' : '' %> />
+              .<%= ext %>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary w-full">Save upload settings</button>
+    </form>
+  </div>
+<% } %>
+
+<% if (tab === 'legal') { %>
+  <div class="space-y-6">
+    <form action="/admin/settings/legal" method="POST" id="legalForm"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <% ['terms', 'privacy', 'refundPolicy'].forEach((key, i) => {
+        const labels = { terms: 'Terms of Service', privacy: 'Privacy Policy', refundPolicy: 'Refund Policy' };
+      %>
+        <div class="card-panel mb-4">
+          <h3 class="font-semibold mb-3"><%= labels[key] %></h3>
+          <div id="editor-<%= key %>" class="bg-white border border-stone-200 rounded-xl2" style="min-height: 200px;"></div>
+          <textarea name="<%= key %>Html" id="input-<%= key %>" class="hidden"><%= settings.legal[`${key}Html`] %></textarea>
+        </div>
+      <% }) %>
+      <button type="submit" class="btn-primary">Save legal pages</button>
+    </form>
+  </div>
+
+  <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+  <script>
+    (function () {
+      const keys = ['terms', 'privacy', 'refundPolicy'];
+      const editors = {};
+      keys.forEach((key) => {
+        const input = document.getElementById(`input-${key}`);
+        const editor = new Quill(`#editor-${key}`, { theme: 'snow' });
+        editor.root.innerHTML = input.value;
+        editors[key] = editor;
+      });
+      document.getElementById('legalForm').addEventListener('submit', () => {
+        keys.forEach((key) => {
+          document.getElementById(`input-${key}`).value = editors[key].root.innerHTML;
+        });
+      });
+    })();
+  </script>
+<% } %>
+
+<%- include('../layouts/dashboard-foot') %>

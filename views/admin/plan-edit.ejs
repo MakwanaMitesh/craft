@@ -1,0 +1,56 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<a href="/admin/plans" class="text-sm text-amber-700 font-semibold mb-4 inline-block">&larr; Back to plans</a>
+
+<div class="max-w-lg card-panel">
+  <form action="/admin/plans/<%= plan._id %>/edit" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div>
+      <label class="label" for="name">Name</label>
+      <input class="input-field" type="text" id="name" name="name" value="<%= plan.name %>" required />
+    </div>
+    <div>
+      <label class="label" for="occasion">Occasion</label>
+      <select class="input-field" id="occasion" name="occasion">
+        <% OCCASIONS.forEach(o => { %>
+          <option value="<%= o %>" <%= plan.occasion === o ? 'selected' : '' %>><%= o[0].toUpperCase() + o.slice(1) %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="price">Price (₹)</label>
+      <input class="input-field" type="number" id="price" name="price" min="0" step="1" value="<%= plan.price %>" required />
+    </div>
+    <div>
+      <label class="label" for="validityDays">Validity (days)</label>
+      <input class="input-field" type="number" id="validityDays" name="validityDays" min="1" value="<%= plan.validityDays %>" />
+    </div>
+    <div>
+      <label class="label" for="description">Description</label>
+      <input class="input-field" type="text" id="description" name="description" value="<%= plan.description %>" />
+    </div>
+    <div>
+      <label class="label" for="maxPhotos">Max photos</label>
+      <input class="input-field" type="number" id="maxPhotos" name="maxPhotos" min="0" value="<%= plan.maxPhotos %>" />
+    </div>
+    <label class="flex items-center gap-2 text-sm font-semibold text-stone-700">
+      <input type="checkbox" name="musicAllowed" class="rounded border-stone-300" <%= plan.musicAllowed ? 'checked' : '' %> /> Background music allowed
+    </label>
+    <label class="flex items-center gap-2 text-sm font-semibold text-stone-700">
+      <input type="checkbox" name="isPopular" class="rounded border-stone-300" <%= plan.isPopular ? 'checked' : '' %> /> Most popular (highlighted on the pricing page)
+    </label>
+    <div>
+      <label class="label" for="analyticsLevel">Card analytics</label>
+      <select class="input-field" id="analyticsLevel" name="analyticsLevel">
+        <option value="full" <%= plan.analyticsLevel !== 'basic' ? 'selected' : '' %>>Full (device, location, activity log)</option>
+        <option value="basic" <%= plan.analyticsLevel === 'basic' ? 'selected' : '' %>>Basic (totals only)</option>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="features">Features (comma separated)</label>
+      <input class="input-field" type="text" id="features" name="features" value="<%= (plan.features || []).join(', ') %>" />
+    </div>
+    <button type="submit" class="btn-primary w-full">Save changes</button>
+  </form>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

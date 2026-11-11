@@ -1,0 +1,36 @@
+<%
+  const userLinks = [
+    { href: '/dashboard', label: 'My cards', icon: '🎂' },
+    { href: '/dashboard/cards/new', label: 'Create a card', icon: '✨' },
+    { href: '/dashboard/orders', label: 'My orders', icon: '🧾' },
+    { href: '/dashboard/profile', label: 'Profile', icon: '👤' },
+  ];
+  const adminLinks = [
+    { href: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
+    { href: '/admin/analytics', label: 'Analytics', icon: '📈' },
+    { href: '/admin/cards', label: 'Cards', icon: '🎴' },
+    { href: '/admin/users', label: 'Users', icon: '👤' },
+    { href: '/admin/orders', label: 'Orders', icon: '🧾' },
+    { href: '/admin/templates', label: 'Templates', icon: '🎨' },
+    { href: '/admin/plans', label: 'Plans', icon: '💳' },
+    { href: '/admin/reviews', label: 'Reviews', icon: '⭐' },
+    { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
+  ];
+  const links = currentUser && currentUser.role === 'admin' ? adminLinks : userLinks;
+  const isLinkActive = (href) => currentPath === href || currentPath.startsWith(`${href}/`);
+%>
+<aside class="hidden md:flex md:flex-col md:w-64 bg-white border-r border-amber-100 shrink-0">
+  <div class="h-16 flex items-center px-6 font-display text-lg font-semibold text-amber-700 border-b border-amber-100">
+    🎈 <%= settings.siteName %>
+  </div>
+  <nav class="flex-1 px-3 py-4 space-y-1">
+    <% links.forEach(link => { %>
+      <a
+        href="<%= link.href %>"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-xl2 font-semibold text-sm <%= isLinkActive(link.href) ? 'bg-amber-50 text-amber-700' : 'text-stone-600 hover:bg-amber-50 hover:text-amber-700' %>"
+      >
+        <span><%= link.icon %></span> <%= link.label %>
+      </a>
+    <% }) %>
+  </nav>
+</aside>

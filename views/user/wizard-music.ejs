@@ -1,0 +1,39 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<% if (card.occasion === 'proposal') { %>
+  <%- include('../partials/wizard-steps-proposal', { step }) %>
+<% } else { %>
+  <%- include('../partials/wizard-steps', { step }) %>
+<% } %>
+
+<div class="max-w-xl card-panel">
+  <form action="/dashboard/cards/<%= card._id %>/build/music" method="POST" class="space-y-3"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label class="label mb-1 block">Background music (optional)</label>
+
+    <label class="flex items-center gap-3 p-3 rounded-lg border border-stone-200 cursor-pointer">
+      <input type="radio" name="trackUrl" value="" <%= !card.music ? 'checked' : '' %> />
+      <span class="text-sm font-semibold">No music</span>
+    </label>
+
+    <% (card.template.musicTracks || []).forEach(track => { %>
+      <label class="flex items-center gap-3 p-3 rounded-lg border border-stone-200 cursor-pointer">
+        <input type="radio" name="trackUrl" value="<%= track.url %>" <%= card.music && card.music.url === track.url ? 'checked' : '' %> />
+        <span class="text-sm font-semibold"><%= track.name %></span>
+      </label>
+    <% }) %>
+
+    <% if (!(card.template.musicTracks || []).length) { %>
+      <p class="text-sm text-stone-400">This template has no music tracks configured — the card will be silent.</p>
+    <% } %>
+
+    <div class="flex items-center justify-between pt-4">
+      <a
+        href="/dashboard/cards/<%= card._id %>/build/<%= card.occasion === 'proposal' ? 'proposal/yes-message' : 'message' %>"
+        class="btn-secondary"
+      >&larr; Back</a>
+      <button type="submit" class="btn-primary">Continue</button>
+    </div>
+  </form>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

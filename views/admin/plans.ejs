@@ -1,0 +1,113 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card-panel lg:col-span-1">
+    <h3 class="font-semibold mb-4">Add plan</h3>
+    <form action="/admin/plans" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div>
+        <label class="label" for="name">Name</label>
+        <input class="input-field" type="text" id="name" name="name" required />
+      </div>
+      <div>
+        <label class="label" for="occasion">Occasion</label>
+        <select class="input-field" id="occasion" name="occasion">
+          <% OCCASIONS.forEach(o => { %>
+            <option value="<%= o %>"><%= o[0].toUpperCase() + o.slice(1) %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label class="label" for="price">Price (₹)</label>
+        <input class="input-field" type="number" id="price" name="price" min="0" step="1" required />
+      </div>
+      <div>
+        <label class="label" for="validityDays">Validity (days)</label>
+        <input class="input-field" type="number" id="validityDays" name="validityDays" min="1" value="365" />
+      </div>
+      <div>
+        <label class="label" for="description">Description</label>
+        <input class="input-field" type="text" id="description" name="description" />
+      </div>
+      <div>
+        <label class="label" for="maxPhotos">Max photos</label>
+        <input class="input-field" type="number" id="maxPhotos" name="maxPhotos" min="0" value="1" />
+      </div>
+      <label class="flex items-center gap-2 text-sm font-semibold text-stone-700">
+        <input type="checkbox" name="musicAllowed" class="rounded border-stone-300" /> Background music allowed
+      </label>
+      <label class="flex items-center gap-2 text-sm font-semibold text-stone-700">
+        <input type="checkbox" name="isPopular" class="rounded border-stone-300" /> Most popular (highlighted on the pricing page)
+      </label>
+      <div>
+        <label class="label" for="analyticsLevel">Card analytics</label>
+        <select class="input-field" id="analyticsLevel" name="analyticsLevel">
+          <option value="full">Full (device, location, activity log)</option>
+          <option value="basic">Basic (totals only)</option>
+        </select>
+      </div>
+      <div>
+        <label class="label" for="features">Features (comma separated)</label>
+        <input class="input-field" type="text" id="features" name="features" placeholder="1 template, HD photo, 1 year live" />
+      </div>
+      <button type="submit" class="btn-primary w-full">Add plan</button>
+    </form>
+  </div>
+
+  <div class="lg:col-span-2">
+    <form method="GET" action="/admin/plans" class="flex items-center gap-3 mb-4">
+      <label class="label mb-0" for="occasionFilter">Occasion</label>
+      <select class="input-field max-w-[180px]" id="occasionFilter" name="occasion" onchange="this.form.submit()">
+        <option value="all" <%= occasion === 'all' ? 'selected' : '' %>>All occasions</option>
+        <% OCCASIONS.forEach(o => { %>
+          <option value="<%= o %>" <%= occasion === o ? 'selected' : '' %>><%= o[0].toUpperCase() + o.slice(1) %></option>
+        <% }) %>
+      </select>
+      <a href="/admin/plans/export.csv?occasion=<%= occasion %>" class="btn-secondary">Export CSV</a>
+    </form>
+  <div class="grid sm:grid-cols-2 gap-4">
+    <% plans.forEach(plan => { %>
+      <div class="card-panel">
+        <div class="flex items-center justify-between mb-2 gap-2">
+          <h4 class="font-semibold"><%= plan.name %></h4>
+          <div class="flex gap-1 shrink-0">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600">
+              <%= plan.occasion[0].toUpperCase() + plan.occasion.slice(1) %>
+            </span>
+            <% if (plan.isPopular) { %>
+              <span class="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">Popular</span>
+            <% } %>
+            <span class="text-xs font-semibold px-2 py-1 rounded-full <%= plan.isActive ? 'bg-amber-50 text-amber-700' : 'bg-stone-100 text-stone-500' %>">
+              <%= plan.isActive ? 'Active' : 'Inactive' %>
+            </span>
+          </div>
+        </div>
+        <p class="text-2xl font-semibold text-amber-600 mb-2">₹<%= plan.price %></p>
+        <p class="text-sm text-stone-500 mb-1"><%= plan.description %></p>
+        <p class="text-xs text-stone-400 mb-1">
+          <%= plan.maxPhotos %> photo<%= plan.maxPhotos === 1 ? '' : 's' %> &middot;
+          <%= plan.musicAllowed ? 'Music allowed' : 'No music' %> &middot;
+          <%= plan.validityDays %> days live
+        </p>
+        <p class="text-xs text-stone-400 mb-3">
+          <%= usageByPlan.get(String(plan._id)) || 0 %> order<%= (usageByPlan.get(String(plan._id)) || 0) === 1 ? '' : 's' %>
+          &middot; <%= plan.analyticsLevel === 'basic' ? 'Basic analytics' : 'Full analytics' %>
+        </p>
+        <div class="flex gap-2">
+          <a href="/admin/plans/<%= plan._id %>/edit" class="btn-secondary text-xs px-2 py-1">Edit</a>
+          <form action="/admin/plans/<%= plan._id %>/toggle" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button type="submit" class="btn-secondary text-xs px-2 py-1"><%= plan.isActive ? 'Deactivate' : 'Activate' %></button>
+          </form>
+          <form action="/admin/plans/<%= plan._id %>/delete" method="POST" onsubmit="return confirm('Delete this plan?');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button type="submit" class="btn-danger text-xs px-2 py-1">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+    <% if (!plans.length) { %>
+      <p class="text-stone-500">No plans yet.</p>
+    <% } %>
+  </div>
+  </div>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

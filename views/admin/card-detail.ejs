@@ -1,0 +1,135 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<a href="/admin/cards" class="text-sm text-amber-700 font-semibold mb-4 inline-block">&larr; Back to cards</a>
+
+<div class="grid lg:grid-cols-3 gap-6 mb-6">
+  <div class="card-panel lg:col-span-2">
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <div>
+        <h2 class="text-xl font-semibold"><%= card.recipientName || card.partnerName %></h2>
+        <p class="text-sm text-stone-400">/c/<%= card.slug %></p>
+      </div>
+      <div class="flex gap-1 shrink-0">
+        <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600"><%= card.occasion[0].toUpperCase() + card.occasion.slice(1) %></span>
+        <% if (card.isDisabled) { %>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full bg-stone-200 text-stone-600">Disabled</span>
+        <% } else { %>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full <%= card.status === 'paid' ? 'bg-amber-50 text-amber-700' : 'bg-stone-100 text-stone-500' %>"><%= card.status %></span>
+        <% } %>
+      </div>
+    </div>
+
+    <dl class="grid sm:grid-cols-2 gap-3 text-sm">
+      <div><dt class="text-stone-400">Owner</dt><dd class="font-semibold"><%= card.user?.name %> (<%= card.user?.email %>)</dd></div>
+      <div><dt class="text-stone-400">Template</dt><dd class="font-semibold"><%= card.template?.name %></dd></div>
+      <div><dt class="text-stone-400">Plan</dt><dd class="font-semibold"><%= card.plan?.name || '—' %></dd></div>
+      <div><dt class="text-stone-400">Created</dt><dd class="font-semibold"><%= card.createdAt.toLocaleString() %></dd></div>
+      <div><dt class="text-stone-400">Paid at</dt><dd class="font-semibold"><%= card.paidAt ? card.paidAt.toLocaleString() : '—' %></dd></div>
+      <div><dt class="text-stone-400">Expires</dt><dd class="font-semibold"><%= card.expiresAt ? card.expiresAt.toLocaleString() : '—' %></dd></div>
+      <div><dt class="text-stone-400">Total views</dt><dd class="font-semibold"><%= card.totalViews %> (<%= card.uniqueViews %> unique)</dd></div>
+      <div><dt class="text-stone-400">First opened</dt><dd class="font-semibold"><%= card.firstOpenedAt ? card.firstOpenedAt.toLocaleString() : 'Not opened yet' %></dd></div>
+      <% if (card.occasion === 'proposal') { %>
+        <div><dt class="text-stone-400">Response</dt><dd class="font-semibold"><%= card.respondedYes ? `YES at ${card.respondedAt.toLocaleString()} (${card.noAttempts} NO attempts)` : 'Waiting for answer' %></dd></div>
+      <% } %>
+    </dl>
+
+    <% if (order) { %>
+      <div class="mt-4 pt-4 border-t border-amber-100 text-sm">
+        <p class="text-stone-400 mb-1">Payment</p>
+        <p>₹<%= order.amount %> &middot; <%= order.status %> &middot; Razorpay payment <%= order.razorpayPaymentId || '—' %></p>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="card-panel">
+    <h3 class="font-semibold mb-3">Admin actions</h3>
+    <div class="space-y-3">
+      <form action="/admin/cards/<%= card._id %>/extend-expiry" method="POST" class="flex gap-2"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <input type="number" name="days" min="1" value="30" class="input-field" placeholder="Days" />
+        <button type="submit" class="btn-secondary whitespace-nowrap">Extend expiry</button>
+      </form>
+      <form action="/admin/cards/<%= card._id %>/toggle-disable" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="btn-secondary w-full"><%= card.isDisabled ? 'Enable card' : 'Disable card' %></button>
+      </form>
+      <% if (card.status === 'paid' && !card.isDisabled) { %>
+        <a href="/c/<%= card.slug %>" target="_blank" class="btn-secondary w-full text-center block">View live link</a>
+      <% } %>
+      <form action="/admin/cards/<%= card._id %>/delete" method="POST" onsubmit="return confirm('Delete this card permanently?');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="btn-danger w-full">Delete card</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card-panel mb-6">
+  <h3 class="font-semibold mb-4">Views — last 30 days</h3>
+  <canvas id="viewsChart" height="80"></canvas>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="card-panel overflow-x-auto">
+    <h3 class="font-semibold mb-4">View log</h3>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-stone-500 border-b border-amber-100">
+          <th class="py-2 pr-4">When</th>
+          <th class="py-2 pr-4">Device</th>
+          <th class="py-2 pr-4">Source</th>
+          <th class="py-2 pr-4">Location</th>
+          <th class="py-2 pr-4">Step reached</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% viewLog.forEach(v => { %>
+          <tr class="border-b border-amber-50">
+            <td class="py-2 pr-4"><%= v.openedAt.toLocaleString() %></td>
+            <td class="py-2 pr-4"><%= v.deviceType %> &middot; <%= v.browser %></td>
+            <td class="py-2 pr-4"><%= v.referrerSource %></td>
+            <td class="py-2 pr-4"><%= [v.city, v.country].filter(Boolean).join(', ') || '—' %></td>
+            <td class="py-2 pr-4"><%= v.furthestStep %></td>
+          </tr>
+        <% }) %>
+        <% if (!viewLog.length) { %>
+          <tr><td colspan="5" class="py-6 text-center text-stone-500">No views yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card-panel overflow-x-auto">
+    <h3 class="font-semibold mb-4">Event timeline</h3>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-stone-500 border-b border-amber-100">
+          <th class="py-2 pr-4">When</th>
+          <th class="py-2 pr-4">Event</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% eventTimeline.forEach(e => { %>
+          <tr class="border-b border-amber-50">
+            <td class="py-2 pr-4"><%= e.createdAt.toLocaleString() %></td>
+            <td class="py-2 pr-4"><%= e.type %><% if (e.type === 'time_spent' && e.durationSeconds !== undefined) { %> (<%= e.durationSeconds %>s)<% } %></td>
+          </tr>
+        <% }) %>
+        <% if (!eventTimeline.length) { %>
+          <tr><td colspan="2" class="py-6 text-center text-stone-500">No events yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  new Chart(document.getElementById('viewsChart'), {
+    type: 'line',
+    data: {
+      labels: <%- JSON.stringify(viewsLabels) %>,
+      datasets: [{ data: <%- JSON.stringify(viewsValues) %>, borderColor: '#E11D48', backgroundColor: 'rgba(225, 29, 72, 0.12)', fill: true, tension: 0.3, pointRadius: 0 }],
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+  });
+</script>
+
+<%- include('../layouts/dashboard-foot') %>

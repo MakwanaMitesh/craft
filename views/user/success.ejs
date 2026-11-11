@@ -1,0 +1,15 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="max-w-md card-panel text-center mx-auto">
+  <div class="text-4xl mb-3">🎉</div>
+  <h3 class="font-semibold text-lg mb-2">Card published!</h3>
+  <p class="text-stone-500 mb-4">Share this link with <%= card.recipientName || card.partnerName %>:</p>
+
+  <%- include('../partials/share-tools', { shareUrl, cardId: card._id, recipientName: card.recipientName || card.partnerName }) %>
+
+  <img src="/dashboard/cards/<%= card._id %>/qr.png" alt="QR code" class="w-32 h-32 mx-auto mt-4 rounded-lg border border-amber-100" />
+
+  <a href="/c/<%= card.slug %>" target="_blank" class="btn-primary mt-6 inline-block">Preview card</a>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

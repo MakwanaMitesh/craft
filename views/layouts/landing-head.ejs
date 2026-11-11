@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <%- include('../partials/head', { title }) %>
+  <% if (typeof metaDescription !== 'undefined') { %><meta name="description" content="<%= metaDescription %>" /><% } %>
+  <% if (typeof metaKeywords !== 'undefined') { %><meta name="keywords" content="<%= metaKeywords %>" /><% } %>
+  <% if (typeof canonicalUrl !== 'undefined') { %>
+    <link rel="canonical" href="<%= canonicalUrl %>" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="<%= canonicalUrl %>" />
+    <meta property="og:title" content="<%= title %>" />
+    <meta property="og:description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : '' %>" />
+    <% if (typeof ogImage !== 'undefined' && ogImage) { %><meta property="og:image" content="<%= ogImage %>" /><% } %>
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="<%= title %>" />
+    <meta name="twitter:description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : '' %>" />
+    <% if (typeof ogImage !== 'undefined' && ogImage) { %><meta name="twitter:image" content="<%= ogImage %>" /><% } %>
+  <% } %>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <!-- Caveat + cards.css: only used by the "Surprise Cards" teaser section's
+       mini-previews, so they reuse the real card design system's components
+       (mood-character-svg, the handwritten sign) instead of approximating
+       them in Tailwind. Scoped to .sc-mini-preview; harmless everywhere else
+       since cards.css only defines its own `sc-`/`mc-` prefixed classes. -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+</head>
+<body class="min-h-screen flex flex-col overflow-x-hidden">
+  <%- include('../partials/navbar') %>
+  <main class="flex-1">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <%- include('../partials/flash') %>
+    </div>

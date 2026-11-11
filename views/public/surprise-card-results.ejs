@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&family=Caveat:wght@500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+    .res-wrap { width: 100%; max-width: 440px; }
+    .res-type { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rose); margin-bottom: 0.25rem; }
+    .res-timeline { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 1rem; }
+    .res-step { display: flex; align-items: flex-start; gap: 0.75rem; }
+    .res-icon {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--blush);
+      display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;
+    }
+    .res-step-label { font-weight: 600; font-size: 15px; }
+    .res-step-time { font-size: 13px; opacity: 0.65; margin-top: 0.1rem; }
+    .res-pending { opacity: 0.55; }
+    .res-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
+    .res-note { font-size: 12px; opacity: 0.55; margin-top: 1.5rem; text-align: center; }
+  </style>
+</head>
+<body class="sc-root">
+  <div class="res-wrap">
+    <div class="sc-card sc-paper">
+      <p class="res-type"><%= card.type[0].toUpperCase() + card.type.slice(1) %> card</p>
+      <h1 class="sc-h1" style="margin-bottom: 0.25rem;">For <%= card.recipientName %></h1>
+      <p class="sc-body" style="opacity: 0.7;">Here's how it's going — this page only refreshes for you.</p>
+
+      <div class="res-timeline">
+        <div class="res-step">
+          <div class="res-icon">✉️</div>
+          <div>
+            <p class="res-step-label">Created</p>
+            <p class="res-step-time"><%= card.createdAt.toLocaleString() %></p>
+          </div>
+        </div>
+
+        <div class="res-step <%= card.openedAt ? '' : 'res-pending' %>">
+          <div class="res-icon">👀</div>
+          <div>
+            <p class="res-step-label">Opened</p>
+            <p class="res-step-time"><%= card.openedAt ? card.openedAt.toLocaleString() : 'Not opened yet' %></p>
+          </div>
+        </div>
+
+        <div class="res-step <%= card.recipientAnswer ? '' : 'res-pending' %>">
+          <% if (card.recipientAnswer === 'yes') { %>
+            <div class="res-icon">💛</div>
+            <div>
+              <p class="res-step-label">Answered "Yes"</p>
+              <p class="res-step-time"><%= card.answeredAt.toLocaleString() %></p>
+            </div>
+          <% } else if (card.recipientAnswer === 'not_yet') { %>
+            <div class="res-icon">🤔</div>
+            <div>
+              <p class="res-step-label">"Not yet"</p>
+              <p class="res-step-time"><%= card.answeredAt.toLocaleString() %></p>
+            </div>
+          <% } else { %>
+            <div class="res-icon">⏳</div>
+            <div>
+              <p class="res-step-label">No answer yet</p>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="res-actions">
+        <button type="button" class="sc-btn" id="resCopy">Copy card link</button>
+        <a href="#" class="sc-btn sc-btn-gold" id="resWhatsapp">Share again on WhatsApp</a>
+      </div>
+    </div>
+    <p class="res-note">This page is private — only refreshes automatically every 30 seconds.</p>
+  </div>
+
+  <script src="/js/cardComponents.js"></script>
+  <script>
+    window.SurpriseCard.wireShareScreen({
+      copyBtn: document.getElementById('resCopy'),
+      whatsappBtn: document.getElementById('resWhatsapp'),
+      shareUrl: <%- JSON.stringify(shareUrl) %>,
+      whatsappText: 'I made something for you 💛',
+    });
+
+    setTimeout(() => location.reload(), 30000);
+  </script>
+</body>
+</html>

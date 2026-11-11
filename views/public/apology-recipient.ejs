@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <meta name="description" content="Someone has something to say to <%= card.recipientName %>." />
+  <!-- Deliberately generic Open Graph text — WhatsApp/Instagram shouldn't spoil the card before it's opened. -->
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="Tap to open." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&family=Caveat:wght@500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    .theme-apology {
+      --rose: #C97B8A;
+      --dur-screen: 720ms;
+      --dur-envelope: 840ms;
+      --dur-letter: 600ms;
+      --dur-tap-pulse: 2.64s;
+      background: linear-gradient(160deg, #E6DEF7, var(--cream) 65%);
+      height: 100%;
+    }
+
+    /* ===== Screen 1: The Knock ===== */
+    .knock-character-wrap {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      transform: translateX(-160%);
+      opacity: 0;
+      transition: transform 1100ms var(--ease-soft), opacity 700ms var(--ease-soft);
+    }
+    .knock-character-wrap.knock-peek { transform: translateX(-46%); opacity: 1; }
+    .knock-character-wrap.knock-center { transform: translateX(0); opacity: 1; }
+    .knock-character-wrap.knock-sway { animation: knock-sway 4.5s ease-in-out infinite; }
+    @keyframes knock-sway {
+      0%, 100% { transform: rotate(-2.5deg); }
+      50% { transform: rotate(2.5deg); }
+    }
+    .knock-character-wrap svg { width: 100%; height: 100%; display: block; }
+
+    /* Blink: squashing the eye elements briefly and rarely reads as a
+       believable blink for both the open-circle (teddy) and closed-curve
+       (bunny/cat) eye styles already drawn in the character SVGs. */
+    .mc-eye {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: knock-blink 4.2s ease-in-out infinite;
+    }
+    @keyframes knock-blink {
+      0%, 94%, 100% { transform: scaleY(1); }
+      97% { transform: scaleY(0.12); }
+    }
+
+    .knock-sign {
+      position: absolute;
+      bottom: -6px;
+      right: -28px;
+      background: var(--white-soft);
+      border-radius: 10px;
+      box-shadow: var(--shadow-soft);
+      padding: 0.35rem 0.9rem;
+      transform: rotate(-6deg) scale(0.6);
+      opacity: 0;
+      transition: transform 600ms var(--ease-soft), opacity 600ms var(--ease-soft);
+    }
+    .knock-sign.knock-sign-visible { transform: rotate(-6deg) scale(1); opacity: 1; }
+    .knock-sign span {
+      font-family: var(--font-hand);
+      font-size: 1.3rem;
+      color: var(--cocoa);
+      white-space: nowrap;
+    }
+
+    .knock-heading {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 700ms var(--ease-soft), transform 700ms var(--ease-soft);
+    }
+    .knock-heading.knock-visible { opacity: 1; transform: translateY(0); }
+
+    .knock-btn-wrap {
+      opacity: 0;
+      transition: opacity 700ms var(--ease-soft);
+    }
+    .knock-btn-wrap.knock-visible { opacity: 1; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .knock-character-wrap { transition: none; transform: translateX(0); opacity: 1; }
+      .knock-sign { transition: none; }
+      .knock-heading, .knock-btn-wrap { transition: none; }
+    }
+
+    /* ===== Screen 2: The Apology ===== */
+    #screen-apology { overflow-y: auto; justify-content: flex-start; padding-top: 3rem; padding-bottom: 7rem; }
+    .apology-notes-stack {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+    .apology-note {
+      background: var(--white-soft);
+      border-radius: 14px;
+      box-shadow: var(--shadow-soft);
+      padding: 1.25rem 1.4rem;
+      text-align: left;
+      opacity: 0;
+      transform: translateY(16px) rotate(var(--note-tilt, -1.5deg));
+      transition: opacity 650ms var(--ease-soft), transform 650ms var(--ease-soft);
+    }
+    .apology-note.apology-note-visible { opacity: 1; transform: translateY(0) rotate(var(--note-tilt, -1.5deg)); }
+    .apology-note-label {
+      font-weight: 600; font-size: 13px; letter-spacing: 0.03em; text-transform: uppercase;
+      color: var(--rose); margin-bottom: 0.4rem;
+    }
+    .apology-note-text { font-family: var(--font-hand); font-size: 1.4rem; line-height: 1.45; color: var(--cocoa); }
+
+    .apology-photos-row {
+      display: flex; gap: 0.9rem; justify-content: center; flex-wrap: wrap;
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 650ms var(--ease-soft), transform 650ms var(--ease-soft);
+    }
+    .apology-photos-row.apology-note-visible { opacity: 1; transform: translateY(0); }
+    .apology-photos-row .sc-polaroid-single {
+      width: 110px; background: var(--white-soft); border-radius: 6px; box-shadow: var(--shadow-soft);
+      padding: 6px 6px 22px;
+    }
+    .apology-photos-row .sc-polaroid-single img { width: 100%; height: 90px; object-fit: cover; display: block; border-radius: 2px; }
+
+    .apology-character-corner {
+      position: fixed; bottom: 1.25rem; left: 1.25rem; width: 76px; height: 76px;
+      z-index: 2; transition: transform 1000ms var(--ease-soft);
+    }
+    .apology-character-corner svg { width: 100%; height: 100%; display: block; }
+
+    .apology-next-wrap {
+      position: fixed; bottom: 1.5rem; left: 0; right: 0;
+      display: flex; justify-content: center; z-index: 3;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .apology-note, .apology-photos-row { transition: none; }
+      .apology-character-corner { transition: none; }
+    }
+
+    /* ===== Screen 3: The Question ===== */
+    .question-character-wrap {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      transition: transform 350ms var(--ease-soft);
+    }
+    .question-flower {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 40px;
+    }
+    .question-tear {
+      position: absolute;
+      top: 62%;
+      left: 32%;
+      width: 10px;
+      height: 14px;
+      opacity: 0;
+      transition: opacity 400ms var(--ease-soft);
+    }
+    .question-character-wrap.question-sad .mc-eye { transform: scale(1.7); }
+    .question-character-wrap.question-sad .question-tear {
+      opacity: 1;
+      animation: question-tear-drip 2.4s ease-in infinite;
+    }
+    @keyframes question-tear-drip {
+      0% { transform: translateY(0); opacity: 0.9; }
+      80% { opacity: 0.9; }
+      100% { transform: translateY(10px); opacity: 0; }
+    }
+    .question-character-wrap.question-joy {
+      animation: question-joy 750ms var(--ease-soft) forwards;
+    }
+    @keyframes question-joy {
+      0% { transform: scale(1) rotate(0deg); }
+      35% { transform: scale(1.3) rotate(-5deg); }
+      60% { transform: scale(0.96) rotate(4deg); }
+      100% { transform: scale(1.18) rotate(0deg); }
+    }
+
+    .question-heading { max-width: 460px; }
+    .question-buttons { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .question-notyet-text {
+      font-family: var(--font-hand);
+      font-size: 1.5rem;
+      min-height: 2.2rem;
+      color: var(--cocoa);
+      opacity: 0;
+      transition: opacity 500ms var(--ease-soft);
+    }
+    .question-notyet-text.question-visible { opacity: 1; }
+
+    .question-celebration {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 700ms var(--ease-soft), transform 700ms var(--ease-soft);
+    }
+    .question-celebration.question-visible { display: flex; opacity: 1; transform: translateY(0); }
+    .question-forgive-text { font-family: var(--font-hand); font-size: 1.6rem; max-width: 440px; line-height: 1.45; }
+    .question-signed { font-family: var(--font-hand); font-size: 1.3rem; opacity: 0.8; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .question-character-wrap, .question-character-wrap.question-joy { transition: none; animation: none; }
+      .question-tear { animation: none; opacity: 0.9; }
+      .question-notyet-text, .question-celebration { transition: none; }
+    }
+  </style>
+</head>
+<body class="sc-root theme-apology">
+
+  <div class="sc-screen-container">
+    <!-- ===== Screen 1: The Knock ===== -->
+    <section class="sc-screen sc-active" id="screen-knock">
+      <div class="sc-bokeh-layer" id="bokehLayer"></div>
+
+      <div class="knock-character-wrap" id="knockCharacter">
+        <%- include('../partials/mood-character-svg', { mood: card.fields.moodCharacter }) %>
+        <div class="knock-sign" id="knockSign"><span>sorry...</span></div>
+      </div>
+
+      <h1 class="sc-heading knock-heading" id="knockHeading" style="position: relative; z-index: 1;">
+        <%= card.recipientName %>, can I say something?
+      </h1>
+
+      <div class="knock-btn-wrap" id="knockBtnWrap" style="position: relative; z-index: 1;">
+        <button type="button" class="sc-btn sc-tap-continue" id="knockContinueBtn">Okay, I'm listening 👂</button>
+      </div>
+    </section>
+
+    <!-- ===== Screen 2: The Apology ===== -->
+    <section class="sc-screen" id="screen-apology">
+      <div class="apology-character-corner" id="apologyCharacter">
+        <%- include('../partials/mood-character-svg', { mood: card.fields.moodCharacter }) %>
+      </div>
+
+      <div class="apology-notes-stack" id="notesStack"></div>
+
+      <div class="apology-next-wrap">
+        <button type="button" class="sc-btn sc-tap-continue" id="apologyNextBtn">Next</button>
+      </div>
+    </section>
+
+    <!-- ===== Screen 3: The Question ===== -->
+    <section class="sc-screen" id="screen-question">
+      <div class="sc-hearts-layer" id="questionHeartsLayer"></div>
+
+      <div class="question-character-wrap" id="questionCharacter" style="position: relative; z-index: 1;">
+        <%- include('../partials/mood-character-svg', { mood: card.fields.moodCharacter }) %>
+        <svg class="question-flower" viewBox="0 0 40 40">
+          <g transform="translate(20,18)">
+            <circle r="7" fill="var(--rose)"/><circle cx="11" r="7" fill="var(--rose)"/><circle cx="-11" r="7" fill="var(--rose)"/>
+            <circle cy="11" r="7" fill="var(--rose)"/><circle cy="-11" r="7" fill="var(--rose)"/>
+            <circle r="5" fill="var(--gold)"/>
+          </g>
+          <rect x="18" y="24" width="4" height="14" rx="2" fill="#8CA87A"/>
+        </svg>
+        <svg class="question-tear" id="questionTear" viewBox="0 0 10 14">
+          <path d="M5 0 C5 0 10 8 10 10.5 C10 12.9 7.8 14 5 14 C2.2 14 0 12.9 0 10.5 C0 8 5 0 5 0Z" fill="#8FBFE0"/>
+        </svg>
+      </div>
+
+      <h1 class="sc-heading question-heading" style="position: relative; z-index: 1;"><%= card.fields.finalQuestion %></h1>
+
+      <div id="questionInitial" style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+        <p class="question-notyet-text" id="notYetText"></p>
+        <div class="question-buttons">
+          <button type="button" class="sc-btn" id="yesBtn">Yes 💛</button>
+          <button type="button" class="sc-btn sc-btn-outline" id="notYetBtn">Not yet 🤔</button>
+        </div>
+      </div>
+
+      <div class="question-celebration" id="celebrationBlock" style="position: relative; z-index: 1;">
+        <p class="question-forgive-text" id="forgiveText"></p>
+        <p class="question-signed" id="signedText"></p>
+        <div class="question-buttons">
+          <button type="button" class="sc-btn sc-btn-outline" id="readAgainBtn">Read again 🔁</button>
+          <a href="/cards/apology/create" class="sc-btn sc-btn-gold">Send your own card ✨</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/js/cardComponents.js"></script>
+  <script>
+    const S = window.SurpriseCard;
+
+    S.startFloatingBokeh(document.getElementById('bokehLayer'), { colors: ['#E6DEF7', '#F8D7DA', '#FFFDFB'] });
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const characterWrap = document.getElementById('knockCharacter');
+    const sign = document.getElementById('knockSign');
+    const heading = document.getElementById('knockHeading');
+    const btnWrap = document.getElementById('knockBtnWrap');
+
+    if (prefersReducedMotion) {
+      characterWrap.classList.add('knock-center');
+      sign.classList.add('knock-sign-visible');
+      heading.classList.add('knock-visible');
+      btnWrap.classList.add('knock-visible');
+    } else {
+      // Peek in from the side, pause, then step fully into the center —
+      // the sign, heading and button follow once the character has arrived.
+      setTimeout(() => characterWrap.classList.add('knock-peek'), 200);
+      setTimeout(() => {
+        characterWrap.classList.add('knock-center');
+        characterWrap.classList.add('knock-sway');
+      }, 1200);
+      setTimeout(() => sign.classList.add('knock-sign-visible'), 2000);
+      setTimeout(() => heading.classList.add('knock-visible'), 2400);
+      setTimeout(() => btnWrap.classList.add('knock-visible'), 2800);
+    }
+
+    const screens = S.createScreenContainer(document.querySelector('.sc-screen-container'));
+    document.getElementById('knockContinueBtn').addEventListener('click', () => {
+      screens.next();
+      startApologyScreen();
+    });
+
+    // ===== Screen 2: The Apology =====
+    const CARD = <%- JSON.stringify({
+      sorryText: card.fields.sorryText,
+      whyMatterText: card.fields.whyMatterText,
+      photos: card.photos || [],
+    }) %>;
+
+    // Build the note/photo sequence: the sorry note always comes first,
+    // then photos "between notes" if any were uploaded, then the optional
+    // "why you matter" note.
+    const apologySteps = [{ type: 'note', label: "I'm sorry for...", text: CARD.sorryText }];
+    if (CARD.photos.length) apologySteps.push({ type: 'photos', photos: CARD.photos });
+    if (CARD.whyMatterText) apologySteps.push({ type: 'note', label: 'Why you matter to me', text: CARD.whyMatterText });
+
+    const notesStack = document.getElementById('notesStack');
+    const nextBtn = document.getElementById('apologyNextBtn');
+    const apologyCharacter = document.getElementById('apologyCharacter');
+    let revealed = 0;
+    let autoTimer = null;
+    let apologyStarted = false;
+
+    function renderStep(step) {
+      if (step.type === 'photos') {
+        const row = document.createElement('div');
+        row.className = 'apology-photos-row';
+        row.innerHTML = step.photos.slice(0, 3).map((url) =>
+          `<div class="sc-polaroid-single"><img src="${url}" alt="A shared memory" /></div>`
+        ).join('');
+        notesStack.appendChild(row);
+        requestAnimationFrame(() => row.classList.add('apology-note-visible'));
+      } else {
+        const note = document.createElement('div');
+        note.className = 'apology-note';
+        note.style.setProperty('--note-tilt', `${(Math.random() * 3 - 1.5).toFixed(2)}deg`);
+        note.innerHTML = `<p class="apology-note-label">${step.label}</p><p class="apology-note-text"></p>`;
+        note.querySelector('.apology-note-text').textContent = step.text;
+        notesStack.appendChild(note);
+        requestAnimationFrame(() => note.classList.add('apology-note-visible'));
+      }
+      notesStack.scrollIntoView({ block: 'end', behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+    }
+
+    function updateCharacterGaze() {
+      // Starts looking down (sad), straightens out as the apology unfolds.
+      const progress = apologySteps.length <= 1 ? 1 : revealed / apologySteps.length;
+      const rotate = -10 + 10 * Math.min(progress, 1);
+      const lift = -6 * Math.min(progress, 1);
+      apologyCharacter.style.transform = `rotate(${rotate}deg) translateY(${lift}px)`;
+    }
+
+    function revealNext() {
+      clearTimeout(autoTimer);
+      if (revealed >= apologySteps.length) return;
+      renderStep(apologySteps[revealed]);
+      revealed += 1;
+      updateCharacterGaze();
+
+      if (revealed >= apologySteps.length) {
+        nextBtn.textContent = 'Continue →';
+      } else if (!prefersReducedMotion) {
+        autoTimer = setTimeout(revealNext, 4000);
+      }
+    }
+
+    function startApologyScreen() {
+      if (apologyStarted) return;
+      apologyStarted = true;
+      updateCharacterGaze();
+      revealNext();
+    }
+
+    nextBtn.addEventListener('click', () => {
+      if (revealed >= apologySteps.length) {
+        screens.next();
+      } else {
+        revealNext();
+      }
+    });
+
+    // ===== Screen 3: The Question =====
+    const SLUG = <%- JSON.stringify(card.slug) %>;
+    const SENDER_NAME = <%- JSON.stringify(card.senderName) %>;
+    const FORGIVE_MESSAGE = <%- JSON.stringify(card.fields.forgiveMessage || '') %>;
+    const CSRF_TOKEN = <%- JSON.stringify(csrfToken) %>;
+
+    const questionCharacter = document.getElementById('questionCharacter');
+    const notYetText = document.getElementById('notYetText');
+    const notYetBtn = document.getElementById('notYetBtn');
+    const yesBtn = document.getElementById('yesBtn');
+    const questionInitial = document.getElementById('questionInitial');
+    const celebrationBlock = document.getElementById('celebrationBlock');
+    const heartsLayer = document.getElementById('questionHeartsLayer');
+
+    const NOT_YET_MESSAGES = ['Please? 🥺', "I'll make it up to you...", 'I brought chocolate 🍫', "Okay, take your time. I'll wait 💛"];
+    let notYetCount = 0;
+    let reachedQuestionScreen = false;
+    let hasSaidYes = false;
+
+    // Marks the moment this screen is actually shown (not just rendered in
+    // the DOM) so the "left without saying yes" beacon only fires for
+    // someone who actually got here, not every page load.
+    document.getElementById('apologyNextBtn').addEventListener('click', () => {
+      if (revealed >= apologySteps.length) reachedQuestionScreen = true;
+    });
+
+    function sendAnswer(answer, useBeacon) {
+      const payload = JSON.stringify({ answer, _csrf: CSRF_TOKEN });
+      if (useBeacon && navigator.sendBeacon) {
+        navigator.sendBeacon(`/c/${SLUG}/answer`, new Blob([payload], { type: 'application/json' }));
+      } else {
+        fetch(`/c/${SLUG}/answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    }
+
+    // "Save 'not yet' as the answer if they leave without saying yes" — any
+    // time they reached this screen and the page is about to be hidden
+    // (closed, backgrounded, navigated away) without a prior "yes". Both
+    // listeners are needed — mobile Safari doesn't reliably fire pagehide,
+    // desktop browsers don't always fire visibilitychange on a hard close.
+    function maybeSendNotYet() {
+      if (reachedQuestionScreen && !hasSaidYes) sendAnswer('not_yet', true);
+    }
+    window.addEventListener('pagehide', maybeSendNotYet);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') maybeSendNotYet();
+    });
+
+    notYetBtn.addEventListener('click', () => {
+      questionCharacter.classList.add('question-sad');
+      if (notYetCount < NOT_YET_MESSAGES.length) {
+        notYetText.textContent = NOT_YET_MESSAGES[notYetCount];
+        notYetText.classList.add('question-visible');
+        notYetCount += 1;
+      }
+      // Buttons stay active throughout — only the text freezes after the 4th tap.
+    });
+
+    yesBtn.addEventListener('click', () => {
+      hasSaidYes = true;
+      sendAnswer('yes', false);
+
+      questionCharacter.classList.remove('question-sad');
+      questionCharacter.classList.add('question-joy');
+      S.burstConfetti({ colors: ['#E6DEF7', '#F8D7DA', '#D4A373'] });
+      const hearts = S.startFloatingHearts(heartsLayer, { color: '#C97B8A', count: 16, intervalMs: 260 });
+      setTimeout(() => hearts.stop(), 3200);
+
+      questionInitial.style.display = 'none';
+      setTimeout(() => {
+        document.getElementById('forgiveText').textContent = FORGIVE_MESSAGE || 'Thank you for forgiving me 💛';
+        document.getElementById('signedText').textContent = `- ${SENDER_NAME}`;
+        celebrationBlock.classList.add('question-visible');
+      }, prefersReducedMotion ? 0 : 600);
+    });
+
+    document.getElementById('readAgainBtn').addEventListener('click', () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>

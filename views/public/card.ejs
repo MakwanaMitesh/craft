@@ -1,0 +1,539 @@
+<%
+  const fontPair = card.template.getFontPair();
+  const theme = card.template.colorTheme;
+  const sections = card.template.sections;
+  const selectedTrack = card.music && card.music.url ? card.music : (card.template.musicTracks || [])[0];
+  const photos = card.photos || [];
+
+  // Build the screen sequence from whichever sections this template has
+  // enabled, so a new template needs zero new code — only new config.
+  // "ending" always plays last, regardless of which sections exist.
+  const sequence = [];
+  if (sections.balloons) sequence.push('balloons');
+  if (sections.cake) sequence.push('cake');
+  if (sections.letter) sequence.push('letter');
+  sequence.push('ending');
+
+  // Split the sanitized message into lines for the line-by-line reveal.
+  // Inline tags (<b>/<i>/<u>) inside each line survive; only the
+  // paragraph/line boundaries (<p>, <br>) are used as split points.
+  const messageLines = (card.message || '')
+    .split(/<\/p>|<p>|<br\s*\/?>/gi)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const wishLines = [
+    'Wishing you joy today! 🎈',
+    "Here's to another amazing year! ✨",
+    'May all your wishes come true! 🌟',
+    'Sending you smiles and sunshine! ☀️',
+    'Celebrate big today! 🎉',
+    'You deserve all the happiness! 💛',
+  ];
+%>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+
+  <% if (typeof canonicalUrl !== 'undefined' && canonicalUrl) { %>
+    <link rel="canonical" href="<%= canonicalUrl %>" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="<%= canonicalUrl %>" />
+    <meta property="og:title" content="<%= title %>" />
+    <meta property="og:description" content="<%= typeof ogDescription !== 'undefined' ? ogDescription : '' %>" />
+    <% if (typeof ogImage !== 'undefined' && ogImage) { %><meta property="og:image" content="<%= ogImage %>" /><% } %>
+    <meta name="twitter:card" content="<%= typeof ogImage !== 'undefined' && ogImage ? 'summary_large_image' : 'summary' %>" />
+    <meta name="twitter:title" content="<%= title %>" />
+    <meta name="twitter:description" content="<%= typeof ogDescription !== 'undefined' ? ogDescription : '' %>" />
+    <% if (typeof ogImage !== 'undefined' && ogImage) { %><meta name="twitter:image" content="<%= ogImage %>" /><% } %>
+  <% } %>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=<%= fontPair.heading.replace(/ /g, '+') %>:wght@500;600;700&family=<%= fontPair.body.replace(/ /g, '+') %>:wght@400;600;700&family=Caveat:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/output.css" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <% if ((typeof isPreview === 'undefined' || !isPreview) && settings.features?.cardViewTrackingEnabled !== false) { %>
+  <script>window.__CARD_SLUG__ = '<%= card.slug %>';</script>
+  <script src="/js/tracking.js"></script>
+  <% } %>
+
+  <style>
+    :root {
+      --primary: <%= theme.primary %>;
+      --secondary: <%= theme.secondary %>;
+      --background: <%= theme.background %>;
+      --font-heading: '<%= fontPair.heading %>', ui-rounded, sans-serif;
+      --font-body: '<%= fontPair.body %>', ui-sans-serif, sans-serif;
+      --font-hand: 'Caveat', cursive;
+    }
+    html, body { height: 100%; overflow: hidden; font-family: var(--font-body); }
+    h1, h2, h3 { font-family: var(--font-heading); }
+    .stage {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, var(--background), color-mix(in srgb, var(--primary) 12%, var(--background)));
+      overflow: hidden;
+    }
+    .screen {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      padding: 1.5rem; text-align: center;
+    }
+    .screen.active { opacity: 1; pointer-events: auto; }
+    .preview-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: #1c1917; color: #fff; font-size: 0.75rem; font-weight: 600;
+      text-align: center; padding: 0.35rem;
+    }
+
+    /* --- Gift box intro --- */
+    .giftbox { width: 150px; cursor: pointer; }
+    .tap-hint { margin-top: 1rem; font-size: 0.875rem; color: #a8a29e; }
+
+    /* --- Balloons --- */
+    .balloon {
+      position: absolute; width: 60px; height: 76px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      cursor: pointer;
+    }
+    .balloon::after {
+      content: ''; position: absolute; bottom: -14px; left: 50%; width: 2px; height: 30px;
+      background: rgba(0,0,0,0.2); transform: translateX(-50%);
+    }
+    .wish-line {
+      position: absolute; background: #fff; padding: 0.4rem 0.8rem; border-radius: 999px;
+      font-size: 0.8rem; font-weight: 600; color: var(--primary); box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      pointer-events: none; white-space: nowrap;
+    }
+
+    /* --- Cake --- */
+    .cake-wrap { position: relative; }
+    .cake { width: 240px; }
+    .flame { transform-origin: bottom center; animation: flicker 0.5s ease-in-out infinite alternate; cursor: pointer; }
+    .flame.off { display: none; }
+    @keyframes flicker { 0% { transform: scaleY(1) rotate(-2deg); } 100% { transform: scaleY(1.15) rotate(2deg); } }
+    .happy-birthday-text { opacity: 0; font-size: 1.75rem; color: var(--primary); margin-top: 1rem; }
+    .mic-button {
+      margin-top: 1rem; font-size: 0.8rem; color: var(--primary); background: none; border: 1px solid var(--primary);
+      border-radius: 999px; padding: 0.4rem 1rem; cursor: pointer;
+    }
+    .mic-status { font-size: 0.75rem; color: #a8a29e; margin-top: 0.5rem; }
+
+    /* --- Letter --- */
+    .envelope-wrap { position: relative; width: min(92vw, 320px); height: 200px; }
+    .envelope-back { position: absolute; inset: 0; background: var(--primary); border-radius: 10px; }
+    .envelope-flap {
+      position: absolute; top: 0; left: 0; right: 0; height: 110px;
+      background: color-mix(in srgb, var(--primary) 70%, black);
+      clip-path: polygon(0 0, 50% 85%, 100% 0);
+      border-radius: 10px 10px 0 0; transform-origin: top center;
+    }
+    .letter {
+      width: min(92vw, 420px); background: #fff; border-radius: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+      padding: 2rem 1.75rem; opacity: 0; display: none;
+    }
+    .polaroid-row { display: flex; gap: 0.75rem; overflow-x: auto; margin-bottom: 1.25rem; padding-bottom: 0.25rem; }
+    .polaroid {
+      flex-shrink: 0; background: #fff; padding: 0.5rem 0.5rem 1.25rem; box-shadow: 0 8px 18px rgba(0,0,0,0.15);
+      border-radius: 2px;
+    }
+    .polaroid img { width: 110px; height: 110px; object-fit: cover; display: block; }
+    .message-line {
+      font-family: var(--font-hand); font-size: 1.5rem; line-height: 1.5; color: #44403c;
+      opacity: 0; text-align: left;
+    }
+    .letter-continue { margin-top: 1.25rem; opacity: 0; }
+
+    /* --- Ending --- */
+    .ending-replay { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+
+    .music-toggle {
+      position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 40;
+      width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
+      background: var(--primary); color: #fff; font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <% if (typeof isPreview !== 'undefined' && isPreview) { %>
+    <div class="preview-banner">PREVIEW — dummy content, nothing is saved or sent</div>
+  <% } %>
+
+  <div class="stage">
+    <section id="screen-tap" class="screen active">
+      <svg class="giftbox" id="giftbox" viewBox="0 0 160 160" fill="none">
+        <rect x="20" y="70" width="120" height="80" rx="8" fill="var(--primary)" />
+        <rect x="10" y="50" width="140" height="26" rx="8" fill="color-mix(in srgb, var(--primary) 70%, black)" id="giftLid" />
+        <rect x="70" y="20" width="20" height="130" fill="var(--secondary)" />
+        <rect x="10" y="56" width="140" height="14" fill="var(--secondary)" />
+        <circle cx="80" cy="30" r="16" fill="var(--secondary)" />
+      </svg>
+      <h1 class="text-2xl mt-6 text-stone-700">A surprise for <%= card.recipientName %> 🎉</h1>
+      <p class="tap-hint">Tap the gift to open it</p>
+    </section>
+
+    <% if (sections.balloons) { %>
+      <section id="screen-balloons" class="screen" aria-live="polite"></section>
+    <% } %>
+
+    <% if (sections.cake) { %>
+      <section id="screen-cake" class="screen">
+        <div class="cake-wrap">
+          <svg class="cake" viewBox="0 0 220 180" fill="none">
+            <g id="candles"></g>
+            <rect x="30" y="100" width="160" height="60" rx="10" fill="var(--primary)" />
+            <rect x="30" y="80" width="160" height="26" rx="10" fill="#fff" stroke="var(--secondary)" stroke-width="4" />
+            <rect x="20" y="150" width="180" height="20" rx="8" fill="color-mix(in srgb, var(--primary) 70%, black)" />
+          </svg>
+        </div>
+        <p class="text-sm text-stone-400 mt-3">Tap each candle to blow it out</p>
+        <button id="micButton" class="mic-button">🎤 Or blow into your mic</button>
+        <p class="mic-status" id="micStatus"></p>
+        <h2 class="happy-birthday-text" id="happyBirthdayText">Happy Birthday <%= card.recipientName %>! 🎂</h2>
+      </section>
+    <% } %>
+
+    <% if (sections.letter) { %>
+      <section id="screen-letter" class="screen">
+        <div class="envelope-wrap" id="envelopeWrap">
+          <div class="envelope-back"></div>
+          <div class="envelope-flap" id="envelopeFlap"></div>
+        </div>
+        <div class="letter" id="letter">
+          <% if (sections.photoGallery && photos.length) { %>
+            <div class="polaroid-row">
+              <% photos.forEach((photo, i) => { %>
+                <div class="polaroid" style="transform: rotate(<%= (i % 2 === 0 ? -1 : 1) * (4 + (i % 3) * 2) %>deg);">
+                  <img src="<%= photo %>" alt="Memory" />
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+          <h2 class="text-xl text-stone-800 mb-3" style="font-family: var(--font-heading);">Dear <%= card.recipientName %>,</h2>
+          <div id="messageLines">
+            <% messageLines.forEach(line => { %>
+              <p class="message-line"><%- line %></p>
+            <% }) %>
+          </div>
+          <p class="text-stone-500 font-semibold mt-5" style="font-family: var(--font-heading);">— <%= card.senderName %></p>
+          <button id="letterContinue" class="btn-primary letter-continue">Continue</button>
+        </div>
+      </section>
+    <% } %>
+
+    <section id="screen-ending" class="screen">
+      <h2 class="text-2xl text-stone-800">🎉 Happy Birthday, <%= card.recipientName %>! 🎉</h2>
+      <p class="text-stone-500 mt-2">Made with love by <%= card.senderName %></p>
+      <% if (settings.features?.poweredByFooterEnabled !== false) { %>
+        <p class="text-xs text-stone-300 mt-1">Made with <%= settings.siteName %></p>
+      <% } %>
+      <div class="ending-replay">
+        <button id="replayButton" class="btn-secondary">↺ Replay</button>
+        <a href="/" class="btn-primary">Create your own card</a>
+      </div>
+    </section>
+  </div>
+
+  <% if (selectedTrack) { %>
+    <audio id="bgMusic" loop src="<%= selectedTrack.url %>"></audio>
+    <button id="musicToggle" class="music-toggle" aria-label="Toggle music" style="display:none;">🔈</button>
+  <% } %>
+
+  <script>
+    const colors = ['<%= theme.primary %>', '<%= theme.secondary %>', '#FDE68A', '#FCA5A5', '#A7F3D0'];
+    const candleCount = <%= card.candleCount %>;
+    const wishLines = <%- JSON.stringify(wishLines) %>;
+    const sequence = <%- JSON.stringify(sequence) %>;
+    let step = -1;
+    let litCandles = 0;
+
+    function track(type) {
+      if (window.CelebraTrack) window.CelebraTrack.event(type);
+    }
+
+    function showScreen(id) {
+      gsap.utils.toArray('.screen').forEach((s) => {
+        s.classList.remove('active');
+        // gsap.fromTo() below sets an inline opacity style, which has higher
+        // CSS specificity than the .screen{opacity:0} class rule — just
+        // removing the 'active' class isn't enough to hide a screen that's
+        // already been shown once. Reset the inline style explicitly too.
+        gsap.set(s, { opacity: 0 });
+      });
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('active');
+      gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: 'power1.out' });
+    }
+
+    function goToNext() {
+      step += 1;
+      if (step >= sequence.length) return;
+      const name = sequence[step];
+      showScreen(`screen-${name}`);
+      if (name === 'balloons') spawnBalloons();
+      if (name === 'cake') buildCandles();
+      if (name === 'letter') playLetter();
+    }
+
+    // --- Balloons ---
+    function spawnBalloons() {
+      const container = document.getElementById('screen-balloons');
+      container.innerHTML = '';
+      const count = 8;
+      for (let i = 0; i < count; i++) {
+        const balloon = document.createElement('div');
+        balloon.className = 'balloon';
+        balloon.style.left = `${8 + i * (84 / count)}%`;
+        balloon.style.bottom = '-120px';
+        balloon.style.background = colors[i % colors.length];
+        container.appendChild(balloon);
+
+        gsap.to(balloon, {
+          y: `-${115 + Math.random() * 15}vh`,
+          duration: 4 + Math.random() * 2,
+          delay: Math.random() * 0.8,
+          ease: 'power1.out',
+        });
+        gsap.to(balloon, {
+          x: `+=${15 + Math.random() * 15}`,
+          duration: 1.2 + Math.random() * 0.6,
+          yoyo: true,
+          repeat: -1,
+          ease: 'sine.inOut',
+        });
+
+        balloon.addEventListener('click', () => popBalloon(balloon));
+      }
+      setTimeout(() => {
+        track('balloons_done');
+        goToNext();
+      }, 4500);
+    }
+
+    function popBalloon(balloon) {
+      if (balloon.dataset.popped) return;
+      balloon.dataset.popped = '1';
+      const rect = balloon.getBoundingClientRect();
+
+      confetti({
+        particleCount: 20,
+        spread: 40,
+        startVelocity: 20,
+        origin: { x: (rect.left + rect.width / 2) / window.innerWidth, y: rect.top / window.innerHeight },
+        colors,
+      });
+
+      const wish = document.createElement('div');
+      wish.className = 'wish-line';
+      wish.textContent = wishLines[Math.floor(Math.random() * wishLines.length)];
+      wish.style.left = `${rect.left}px`;
+      wish.style.top = `${rect.top}px`;
+      document.body.appendChild(wish);
+      gsap.fromTo(wish, { opacity: 0, y: 10 }, { opacity: 1, y: -10, duration: 0.3 });
+      gsap.to(wish, { opacity: 0, delay: 1.2, duration: 0.5, onComplete: () => wish.remove() });
+
+      gsap.to(balloon, { scale: 0, opacity: 0, duration: 0.2, onComplete: () => balloon.remove() });
+    }
+
+    // --- Cake ---
+    function buildCandles() {
+      const group = document.getElementById('candles');
+      group.innerHTML = '';
+      litCandles = candleCount;
+      const startX = 110 - (candleCount - 1) * 9;
+      for (let i = 0; i < candleCount; i++) {
+        const x = startX + i * 18;
+        const candle = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        candle.innerHTML = `
+          <rect x="${x - 2}" y="60" width="4" height="22" fill="#fff" />
+          <ellipse class="flame" data-flame cx="${x}" cy="56" rx="5" ry="9" fill="#F59E0B" />
+        `;
+        group.appendChild(candle);
+        const flame = candle.querySelector('[data-flame]');
+        flame.addEventListener('click', () => extinguishOne(flame));
+      }
+    }
+
+    function extinguishOne(flame) {
+      if (flame.classList.contains('off')) return;
+      flame.classList.add('off');
+      litCandles -= 1;
+      if (litCandles <= 0) allCandlesOut();
+    }
+
+    function allCandlesOut() {
+      track('candles_blown');
+      const cakeEl = document.querySelector('#screen-cake .cake-wrap');
+      const rect = cakeEl.getBoundingClientRect();
+      confetti({
+        particleCount: 150,
+        spread: 90,
+        origin: { x: (rect.left + rect.width / 2) / window.innerWidth, y: rect.top / window.innerHeight },
+        colors,
+      });
+      gsap.to('#happyBirthdayText', { opacity: 1, y: -10, duration: 0.6 });
+      stopMicListening();
+      setTimeout(goToNext, 2200);
+    }
+
+    // --- Optional mic-blow detection ---
+    let audioCtx, analyser, micStream, micRunning = false;
+
+    document.getElementById('micButton')?.addEventListener('click', enableMicBlow);
+
+    async function enableMicBlow() {
+      const status = document.getElementById('micStatus');
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(micStream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        micRunning = true;
+        status.textContent = 'Listening... blow towards your mic 🎤';
+        monitorBlow();
+      } catch (err) {
+        status.textContent = 'Microphone unavailable — tap the candles instead.';
+      }
+    }
+
+    function monitorBlow() {
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      let blowFrames = 0;
+      function check() {
+        if (!micRunning) return;
+        analyser.getByteFrequencyData(data);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length;
+        if (avg > 45) {
+          blowFrames += 1;
+          if (blowFrames > 4) {
+            const stillLit = document.querySelector('[data-flame]:not(.off)');
+            if (stillLit) extinguishOne(stillLit);
+            blowFrames = 0;
+          }
+        } else {
+          blowFrames = Math.max(0, blowFrames - 1);
+        }
+        requestAnimationFrame(check);
+      }
+      check();
+    }
+
+    function stopMicListening() {
+      micRunning = false;
+      if (micStream) micStream.getTracks().forEach((t) => t.stop());
+      if (audioCtx) audioCtx.close();
+    }
+
+    // --- Letter ---
+    function playLetter() {
+      track('letter_opened');
+      const tl = gsap.timeline();
+      tl.to('#envelopeFlap', { rotateX: -170, duration: 0.6, ease: 'power1.inOut' });
+      tl.to('#envelopeWrap', { opacity: 0, duration: 0.3 }, '+=0.2');
+      tl.set('#letter', { display: 'block' });
+      tl.fromTo('#letter', { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.4)' });
+      tl.to('.message-line', {
+        opacity: 1,
+        y: 0,
+        duration: 0.5,
+        stagger: 0.5,
+        ease: 'power1.out',
+        onComplete: () => gsap.to('#letterContinue', { opacity: 1, duration: 0.5 }),
+      }, '+=0.3');
+      gsap.set('.message-line', { y: 14 });
+    }
+
+    document.getElementById('letterContinue')?.addEventListener('click', goToNext);
+
+    // --- Ending / replay ---
+    document.getElementById('replayButton').addEventListener('click', () => {
+      track('replay');
+      step = -1;
+      document.querySelectorAll('[data-flame]').forEach((f) => f.classList.remove('off'));
+      gsap.set('#happyBirthdayText', { opacity: 0, y: 0 });
+      gsap.set('#envelopeWrap', { opacity: 1 });
+      gsap.set('#envelopeFlap', { rotateX: 0 });
+      gsap.set('#letter', { display: 'none', opacity: 0 });
+      gsap.set('.message-line', { opacity: 0 });
+      gsap.set('#letterContinue', { opacity: 0 });
+
+      // Undo everything the gift-box click did, or the box stays visually
+      // "already opened" and unclickable (pointer-events was disabled to
+      // block a second tap mid-animation) — replay would otherwise bring you
+      // back to the tap screen with a gift box that no longer responds.
+      const giftbox = document.getElementById('giftbox');
+      giftbox.style.pointerEvents = 'auto';
+      gsap.set('#giftLid', { y: 0, opacity: 1 });
+
+      stopMicListening();
+      const micStatus = document.getElementById('micStatus');
+      if (micStatus) micStatus.textContent = '';
+
+      const music = document.getElementById('bgMusic');
+      if (music) {
+        music.pause();
+        music.currentTime = 0;
+      }
+      const musicToggle = document.getElementById('musicToggle');
+      if (musicToggle) {
+        musicToggle.style.display = 'none';
+        musicToggle.textContent = '🔈';
+      }
+
+      showScreen('screen-tap');
+    });
+
+    // --- Kickoff ---
+    document.getElementById('giftbox').addEventListener('click', (e) => {
+      track('tapped_open');
+      e.currentTarget.style.pointerEvents = 'none'; // prevent a second tap mid-animation
+
+      const tl = gsap.timeline({
+        // showScreen() forces every screen's opacity to 0 the instant it
+        // runs, which would otherwise cut this fade-out short if goToNext()
+        // fired immediately — wait for the box animation to actually finish.
+        onComplete: goToNext,
+      });
+      tl.to('#giftLid', { y: -20, opacity: 0, duration: 0.4, ease: 'power1.out' });
+      tl.to('#screen-tap', { opacity: 0, duration: 0.4 }, '-=0.1');
+
+      const music = document.getElementById('bgMusic');
+      const toggle = document.getElementById('musicToggle');
+      if (music && toggle) {
+        toggle.style.display = 'block';
+        music.play().catch(() => {});
+      }
+
+      <% if (typeof isPreview === 'undefined' || !isPreview) { %>
+      // Best-effort — the actual "opened" signal for the sender's notification
+      // email. Failure here shouldn't block the recipient's experience.
+      fetch('/c/<%= card.slug %>/opened', { method: 'POST' }).catch(() => {});
+      <% } %>
+    });
+
+    const musicToggle = document.getElementById('musicToggle');
+    if (musicToggle) {
+      musicToggle.addEventListener('click', () => {
+        const music = document.getElementById('bgMusic');
+        if (music.paused) {
+          music.play();
+          musicToggle.textContent = '🔈';
+        } else {
+          music.pause();
+          musicToggle.textContent = '🔇';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

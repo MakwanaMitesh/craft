@@ -1,0 +1,87 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="flex items-center justify-between mb-6">
+  <p class="text-stone-500">Everything you've created, in one place.</p>
+  <a href="/dashboard/cards/new" class="btn-primary">+ Create new card</a>
+</div>
+
+<% if (!cardsWithDisplayStatus.length) { %>
+  <div class="card-panel text-center py-16">
+    <div class="text-4xl mb-3">🎂</div>
+    <h3 class="font-semibold text-lg mb-1">No cards yet</h3>
+    <p class="text-stone-500 mb-6">Create your first animated birthday card.</p>
+    <a href="/dashboard/cards/new" class="btn-primary">Create a card</a>
+  </div>
+<% } else { %>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <% cardsWithDisplayStatus.forEach(({ card, displayStatus, shareUrl, lastOpenedLabel }) => { %>
+      <div class="card-panel">
+        <div class="flex items-center justify-between mb-2 gap-2">
+          <h3 class="font-semibold"><%= card.recipientName || card.partnerName || 'Untitled card' %></h3>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600 shrink-0">
+            <%= card.occasion[0].toUpperCase() + card.occasion.slice(1) %>
+          </span>
+        </div>
+        <div class="mb-2">
+          <span class="text-xs font-semibold px-2 py-1 rounded-full
+            <%= displayStatus === 'paid' ? 'bg-amber-50 text-amber-700' : displayStatus === 'expired' ? 'bg-rose-50 text-rose-600' : 'bg-stone-100 text-stone-500' %>">
+            <%= displayStatus %>
+          </span>
+          <% if (card.occasion === 'proposal' && card.respondedYes) { %>
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">YES 💍</span>
+          <% } %>
+        </div>
+        <% if (card.message) { %>
+          <p class="text-sm text-stone-500 line-clamp-2 mb-2"><%- card.message %></p>
+        <% } else { %>
+          <%# card.question is plain user-submitted text, never run through sanitizeHtml
+              (unlike message/yesMessage) — it must stay escaped, never rendered raw. %>
+          <p class="text-sm text-stone-500 line-clamp-2 mb-2"><%= card.question || 'Not finished yet.' %></p>
+        <% } %>
+        <% if (displayStatus === 'paid' && card.occasion === 'proposal') { %>
+          <p class="text-xs text-stone-400 mb-1">
+            <%= card.totalViews %> view<%= card.totalViews === 1 ? '' : 's' %> (<%= card.uniqueViews %> unique)
+            <% if (lastOpenedLabel) { %> &middot; <%= lastOpenedLabel %><% } %> &middot;
+            <% if (card.respondedYes) { %>
+              Said YES 💖 on <%= card.respondedAt.toDateString() %> &middot;
+              <%= card.noAttempts %> NO attempt<%= card.noAttempts === 1 ? '' : 's' %>
+            <% } else { %>
+              Waiting for answer
+            <% } %>
+          </p>
+        <% } else if (displayStatus === 'paid') { %>
+          <p class="text-xs text-stone-400 mb-1">
+            <%= card.totalViews %> view<%= card.totalViews === 1 ? '' : 's' %> (<%= card.uniqueViews %> unique)
+            <% if (lastOpenedLabel) { %> &middot; <%= lastOpenedLabel %><% } else { %> &middot; Not opened yet<% } %>
+          </p>
+          <% if (card.birthdayDate && card.birthdayDate > new Date()) { %>
+            <p class="text-xs text-amber-600 mb-3">🕒 Scheduled to unlock <%= card.birthdayDate.toDateString() %></p>
+          <% } %>
+        <% } %>
+
+        <% if (displayStatus === 'paid') { %>
+          <div class="mb-3">
+            <%- include('../partials/share-tools', { shareUrl, cardId: card._id, recipientName: card.recipientName }) %>
+          </div>
+        <% } %>
+
+        <div class="flex flex-wrap gap-2">
+          <% if (displayStatus === 'paid') { %>
+            <a href="/c/<%= card.slug %>" target="_blank" class="btn-secondary text-sm px-3 py-1.5">View card</a>
+            <a href="/dashboard/cards/<%= card._id %>/stats" class="btn-secondary text-sm px-3 py-1.5">📊 Analytics</a>
+          <% } else { %>
+            <a
+              href="/dashboard/cards/<%= card._id %>/build/<%= card.occasion === 'proposal' ? 'proposal/names' : 'details' %>"
+              class="btn-primary text-sm px-3 py-1.5"
+            >Continue editing</a>
+          <% } %>
+          <form action="/dashboard/cards/<%= card._id %>/delete" method="POST" onsubmit="return confirm('Delete this card?');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button type="submit" class="btn-danger text-sm px-3 py-1.5">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('../layouts/dashboard-foot') %>

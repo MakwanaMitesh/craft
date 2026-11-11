@@ -1,0 +1,45 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<% if (occasion === 'proposal') { %>
+  <%- include('../partials/wizard-steps-proposal', { step }) %>
+<% } else { %>
+  <%- include('../partials/wizard-steps', { step }) %>
+<% } %>
+
+<div class="max-w-3xl card-panel">
+  <form action="<%= card ? `/dashboard/cards/${card._id}/build/template` : '/dashboard/cards' %>" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label class="label mb-3 block">Choose a template</label>
+    <div class="grid sm:grid-cols-3 gap-3">
+      <% templates.forEach((tpl, i) => { %>
+        <label class="card-panel cursor-pointer flex flex-col items-center gap-2 border-2
+          <%= (card && String(card.template._id) === String(tpl._id)) || (!card && i === 0) ? 'border-amber-500' : 'border-transparent' %>">
+          <input
+            type="radio" name="templateId" value="<%= tpl._id %>" class="sr-only"
+            <%= (card && String(card.template._id) === String(tpl._id)) || (!card && i === 0) ? 'checked' : '' %> required
+          />
+          <div class="w-full h-20 rounded-lg" style="background: linear-gradient(135deg, <%= tpl.colorTheme.primary %>, <%= tpl.colorTheme.secondary %>)"></div>
+          <span class="text-sm font-semibold"><%= tpl.name %></span>
+          <% if (tpl.isPremium) { %><span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">PREMIUM</span><% } %>
+        </label>
+      <% }) %>
+      <% if (!templates.length) { %>
+        <p class="text-stone-500 text-sm col-span-3">No templates available yet. Please check back soon.</p>
+      <% } %>
+    </div>
+
+    <button type="submit" class="btn-primary w-full mt-6">Continue</button>
+  </form>
+</div>
+
+<script>
+  document.querySelectorAll('input[name="templateId"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      document.querySelectorAll('input[name="templateId"]').forEach((r) => {
+        r.closest('label').classList.toggle('border-amber-500', r.checked);
+        r.closest('label').classList.toggle('border-transparent', !r.checked);
+      });
+    });
+  });
+</script>
+
+<%- include('../layouts/dashboard-foot') %>

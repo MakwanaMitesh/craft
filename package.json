@@ -1,0 +1,50 @@
+{
+  "name": "celebracraft",
+  "version": "1.0.0",
+  "description": "CelebraCraft - create and share animated birthday greeting websites",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/output.css --watch",
+    "build:css:prod": "tailwindcss -i ./public/css/input.css -o ./public/css/output.css --minify",
+    "seed:admin": "node seed/seedAdmin.js",
+    "seed:templates": "node seed/seedTemplates.js",
+    "seed:proposal-templates": "node seed/seedProposalTemplates.js",
+    "migrate:occasion": "node migrations/migrateOccasion.js",
+    "migrate:tracking": "node migrations/migrateCardTracking.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cloudinary": "^2.11.0",
+    "compression": "^1.7.4",
+    "connect-mongo": "^5.1.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.0",
+    "express-validator": "^7.1.0",
+    "geoip-lite": "^2.0.3",
+    "helmet": "^7.1.0",
+    "isbot": "^5.2.3",
+    "mongoose": "^8.5.0",
+    "morgan": "^1.10.0",
+    "multer": "^2.5.0",
+    "nanoid": "^3.3.7",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.4.0",
+    "pdfkit": "^0.20.2",
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.4",
+    "sanitize-html": "^2.13.0",
+    "sharp": "^0.35.5",
+    "ua-parser-js": "^2.0.10"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.19",
+    "nodemon": "^3.1.4",
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.9"
+  }
+}

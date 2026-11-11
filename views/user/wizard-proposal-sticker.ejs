@@ -1,0 +1,44 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<%- include('../partials/wizard-steps-proposal', { step }) %>
+
+<div class="max-w-xl card-panel">
+  <form action="/dashboard/cards/<%= card._id %>/build/proposal/sticker" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label class="label mb-1 block">Pick a sticker</label>
+
+    <div class="grid grid-cols-3 gap-3">
+      <% (card.template.stickers || []).forEach((sticker, i) => { %>
+        <label class="card-panel cursor-pointer flex flex-col items-center gap-2 border-2
+          <%= (card.sticker === sticker.url) || (!card.sticker && i === 0) ? 'border-rose-500' : 'border-transparent' %>">
+          <input
+            type="radio" name="stickerUrl" value="<%= sticker.url %>" class="sr-only"
+            <%= (card.sticker === sticker.url) || (!card.sticker && i === 0) ? 'checked' : '' %> required
+          />
+          <img src="<%= sticker.url %>" alt="<%= sticker.name %>" class="w-16 h-16 object-contain" />
+          <span class="text-xs font-semibold text-stone-600"><%= sticker.name %></span>
+        </label>
+      <% }) %>
+      <% if (!(card.template.stickers || []).length) { %>
+        <p class="text-stone-500 text-sm col-span-3">This template has no stickers yet — ask an admin to add some.</p>
+      <% } %>
+    </div>
+
+    <div class="flex items-center justify-between pt-2">
+      <a href="/dashboard/cards/<%= card._id %>/build/proposal/question" class="btn-secondary">&larr; Back</a>
+      <button type="submit" class="btn-primary">Continue</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.querySelectorAll('input[name="stickerUrl"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      document.querySelectorAll('input[name="stickerUrl"]').forEach((r) => {
+        r.closest('label').classList.toggle('border-rose-500', r.checked);
+        r.closest('label').classList.toggle('border-transparent', !r.checked);
+      });
+    });
+  });
+</script>
+
+<%- include('../layouts/dashboard-foot') %>

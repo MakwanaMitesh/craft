@@ -1,0 +1,86 @@
+<%
+  const theme = card.template.colorTheme;
+  const fontPair = card.template.getFontPair();
+%>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <% if (typeof canonicalUrl !== 'undefined' && canonicalUrl) { %>
+    <link rel="canonical" href="<%= canonicalUrl %>" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="<%= canonicalUrl %>" />
+    <meta property="og:title" content="<%= title %>" />
+    <meta property="og:description" content="<%= typeof ogDescription !== 'undefined' ? ogDescription : '' %>" />
+    <% if (typeof ogImage !== 'undefined' && ogImage) { %><meta property="og:image" content="<%= ogImage %>" /><% } %>
+  <% } %>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=<%= fontPair.heading.replace(/ /g, '+') %>:wght@500;600;700&family=<%= fontPair.body.replace(/ /g, '+') %>:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/output.css" />
+  <style>
+    :root {
+      --primary: <%= theme.primary %>;
+      --secondary: <%= theme.secondary %>;
+      --background: <%= theme.background %>;
+      --font-heading: '<%= fontPair.heading %>', ui-rounded, sans-serif;
+      --font-body: '<%= fontPair.body %>', ui-sans-serif, sans-serif;
+    }
+    html, body { height: 100%; margin: 0; font-family: var(--font-body); }
+    body {
+      display: flex; align-items: center; justify-content: center; text-align: center; padding: 1.5rem;
+      background: linear-gradient(160deg, var(--background), color-mix(in srgb, var(--primary) 12%, var(--background)));
+    }
+    h1 { font-family: var(--font-heading); }
+    .countdown { display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
+    .unit { background: #fff; border-radius: 14px; padding: 1rem 1.25rem; min-width: 76px; box-shadow: 0 10px 24px rgba(0,0,0,0.08); }
+    .unit .value { font-size: 1.75rem; font-weight: 700; color: var(--primary); font-family: var(--font-heading); }
+    .unit .label { font-size: 0.7rem; color: #a8a29e; text-transform: uppercase; letter-spacing: 0.05em; }
+  </style>
+</head>
+<body>
+  <div>
+    <div style="font-size:3rem;">🎁</div>
+    <h1 class="text-2xl text-stone-700">A surprise is waiting for <%= card.recipientName %></h1>
+    <p class="text-stone-500 mt-1">It unlocks right on the big day — come back then!</p>
+    <div class="countdown" id="countdown">
+      <div class="unit"><div class="value" id="cd-days">--</div><div class="label">Days</div></div>
+      <div class="unit"><div class="value" id="cd-hours">--</div><div class="label">Hours</div></div>
+      <div class="unit"><div class="value" id="cd-mins">--</div><div class="label">Mins</div></div>
+      <div class="unit"><div class="value" id="cd-secs">--</div><div class="label">Secs</div></div>
+    </div>
+    <p class="text-sm text-stone-400 mt-4" id="readyHint" style="display:none;">It's time! Refresh to open your card.</p>
+  </div>
+
+  <script>
+    const target = new Date('<%= card.birthdayDate.toISOString() %>').getTime();
+
+    function tick() {
+      const diff = target - Date.now();
+      if (diff <= 0) {
+        document.getElementById('countdown').style.display = 'none';
+        document.getElementById('readyHint').style.display = 'block';
+        clearInterval(timer);
+        setTimeout(() => window.location.reload(), 1500);
+        return;
+      }
+      const days = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      document.getElementById('cd-days').textContent = days;
+      document.getElementById('cd-hours').textContent = String(hours).padStart(2, '0');
+      document.getElementById('cd-mins').textContent = String(mins).padStart(2, '0');
+      document.getElementById('cd-secs').textContent = String(secs).padStart(2, '0');
+    }
+
+    tick();
+    const timer = setInterval(tick, 1000);
+  </script>
+</body>
+</html>

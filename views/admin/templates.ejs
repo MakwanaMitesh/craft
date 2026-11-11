@@ -1,0 +1,69 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+  <p class="text-stone-500">Each template drives the same public card engine — new designs need no new code.</p>
+  <a href="/admin/templates/new" class="btn-primary">+ New template</a>
+</div>
+
+<form method="GET" action="/admin/templates" class="flex items-center gap-3 mb-5">
+  <label class="label mb-0" for="occasion">Occasion</label>
+  <select class="input-field max-w-[180px]" id="occasion" name="occasion" onchange="this.form.submit()">
+    <option value="all" <%= occasion === 'all' ? 'selected' : '' %>>All occasions</option>
+    <% OCCASIONS.forEach(o => { %>
+      <option value="<%= o %>" <%= occasion === o ? 'selected' : '' %>><%= o[0].toUpperCase() + o.slice(1) %></option>
+    <% }) %>
+  </select>
+  <a href="/admin/templates/export.csv?occasion=<%= occasion %>" class="btn-secondary">Export CSV</a>
+</form>
+
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+  <% templates.forEach(tpl => { %>
+    <div class="card-panel">
+      <div
+        class="w-full h-24 rounded-lg mb-3 flex items-center justify-center text-white text-sm font-semibold"
+        style="background: linear-gradient(135deg, <%= tpl.colorTheme.primary %>, <%= tpl.colorTheme.secondary %>)"
+      >
+        <% if (tpl.thumbnail) { %>
+          <img src="<%= tpl.thumbnail %>" alt="<%= tpl.name %>" class="w-full h-full object-cover rounded-lg" />
+        <% } else { %>
+          <%= tpl.name %>
+        <% } %>
+      </div>
+      <div class="flex items-center justify-between mb-1 gap-2">
+        <h4 class="font-semibold"><%= tpl.name %></h4>
+        <div class="flex gap-1 shrink-0">
+          <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600">
+            <%= tpl.occasion[0].toUpperCase() + tpl.occasion.slice(1) %>
+          </span>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full <%= tpl.isActive ? 'bg-amber-50 text-amber-700' : 'bg-stone-100 text-stone-500' %>">
+            <%= tpl.isActive ? 'Active' : 'Inactive' %>
+          </span>
+        </div>
+      </div>
+      <p class="text-xs text-stone-400 mb-1">
+        <%= tpl.isPremium ? 'Premium' : 'Free' %> &middot; order <%= tpl.sortOrder %> &middot;
+        <% if (tpl.occasion === 'proposal') { %>
+          <%= (tpl.stickers || []).length %> sticker<%= tpl.stickers.length === 1 ? '' : 's' %>
+        <% } else { %>
+          <%= [tpl.sections.balloons && 'balloons', tpl.sections.cake && 'cake', tpl.sections.photoGallery && 'gallery', tpl.sections.letter && 'letter'].filter(Boolean).join(', ') || 'no sections' %>
+        <% } %>
+      </p>
+      <p class="text-xs text-stone-400 mb-3"><%= usageByTemplate.get(String(tpl._id)) || 0 %> card<%= (usageByTemplate.get(String(tpl._id)) || 0) === 1 ? '' : 's' %> created</p>
+      <div class="flex flex-wrap gap-2">
+        <a href="/admin/templates/<%= tpl._id %>/preview" target="_blank" class="btn-secondary text-xs px-2 py-1">Live preview</a>
+        <a href="/admin/templates/<%= tpl._id %>/edit" class="btn-secondary text-xs px-2 py-1">Edit</a>
+        <form action="/admin/templates/<%= tpl._id %>/toggle" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button type="submit" class="btn-secondary text-xs px-2 py-1"><%= tpl.isActive ? 'Deactivate' : 'Activate' %></button>
+        </form>
+        <form action="/admin/templates/<%= tpl._id %>/delete" method="POST" onsubmit="return confirm('Delete this template?');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button type="submit" class="btn-danger text-xs px-2 py-1">Delete</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+  <% if (!templates.length) { %>
+    <p class="text-stone-500">No templates yet.</p>
+  <% } %>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

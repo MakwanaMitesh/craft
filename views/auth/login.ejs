@@ -1,0 +1,29 @@
+<%- include('../layouts/main-head', { title }) %>
+
+<div class="max-w-md mx-auto card-panel">
+  <h2 class="text-2xl font-semibold mb-1">Welcome back</h2>
+  <p class="text-stone-500 mb-6">Log in to manage your cards.</p>
+
+  <form action="/login" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <% if (typeof redirectTo !== 'undefined' && redirectTo) { %><input type="hidden" name="redirectTo" value="<%= redirectTo %>" /><% } %>
+    <div>
+      <label class="label" for="email">Email</label>
+      <input class="input-field" type="email" id="email" name="email" value="<%= oldInput.email || '' %>" required />
+    </div>
+    <div>
+      <label class="label" for="password">Password</label>
+      <input class="input-field" type="password" id="password" name="password" required />
+    </div>
+    <div class="text-right">
+      <a href="/forgot-password" class="text-sm text-amber-700 font-semibold">Forgot password?</a>
+    </div>
+    <button type="submit" class="btn-primary w-full">Log in</button>
+  </form>
+
+  <p class="text-sm text-stone-500 mt-6 text-center">
+    New here?
+    <a href="/register<%= typeof redirectTo !== 'undefined' && redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : '' %>" class="text-amber-700 font-semibold">Create an account</a>
+  </p>
+</div>
+
+<%- include('../layouts/main-foot') %>

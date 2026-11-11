@@ -1,0 +1,13 @@
+<%
+  // Expects: shareUrl, cardId (card._id), recipientName
+  const waText = encodeURIComponent(`A surprise for ${recipientName}! 🎉 ${shareUrl}`);
+%>
+<div class="flex flex-wrap items-center gap-2">
+  <input readonly value="<%= shareUrl %>" class="input-field text-xs py-1.5 flex-1 min-w-[160px]" onclick="this.select()" />
+  <button type="button" class="btn-secondary text-xs px-2 py-1.5" onclick="navigator.clipboard.writeText('<%= shareUrl %>')">Copy link</button>
+  <a
+    href="https://wa.me/?text=<%= waText %>" target="_blank" rel="noopener"
+    class="btn-secondary text-xs px-2 py-1.5"
+  >WhatsApp</a>
+  <a href="/dashboard/cards/<%= cardId %>/qr.png" download class="btn-secondary text-xs px-2 py-1.5">Download QR</a>
+</div>

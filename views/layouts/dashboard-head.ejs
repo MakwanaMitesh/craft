@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <%- include('../partials/head', { title }) %>
+</head>
+<body class="min-h-screen bg-amber-50/40">
+  <div class="flex min-h-screen">
+    <%- include('../partials/sidebar') %>
+    <div class="flex-1 flex flex-col min-w-0">
+      <%- include('../partials/topbar') %>
+      <main class="flex-1 p-4 sm:p-6">
+        <% if (impersonatorName) { %>
+          <div class="bg-stone-800 text-white text-sm px-4 py-2.5 rounded-xl2 mb-4 flex items-center justify-between gap-3">
+            <span>👤 <strong><%= impersonatorName %></strong> is viewing this account for support.</span>
+            <form action="/stop-impersonating" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn-secondary text-xs px-3 py-1">Return to admin</button>
+            </form>
+          </div>
+        <% } %>
+        <%- include('../partials/flash') %>

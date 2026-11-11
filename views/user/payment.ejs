@@ -1,0 +1,58 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="max-w-md card-panel text-center">
+  <h3 class="font-semibold text-lg mb-2"><%= plan.name %> plan — ₹<%= plan.price %></h3>
+  <p class="text-stone-500 mb-6">Publishing card for <%= card.recipientName || card.partnerName %>.</p>
+  <button id="payButton" class="btn-primary w-full">Pay now</button>
+  <p id="payStatus" class="text-sm text-stone-500 mt-4"></p>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  document.getElementById('payButton').addEventListener('click', function () {
+    var options = {
+      key: '<%= razorpayKeyId %>',
+      amount: <%= order.amount * 100 %>,
+      currency: 'INR',
+      order_id: '<%= razorpayOrderId %>',
+      name: '<%= settings.siteName %>',
+      description: '<%= plan.name %> plan',
+      handler: function (response) {
+        document.getElementById('payStatus').textContent = 'Verifying payment...';
+        fetch('/payments/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' },
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            orderId: '<%= order._id %>',
+          }),
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data.success) {
+              window.location.href = data.redirectUrl;
+            } else {
+              window.location.href = data.redirectUrl || '/dashboard/cards/<%= card._id %>/payment-failed';
+            }
+          })
+          .catch(function () {
+            document.getElementById('payStatus').textContent = 'Something went wrong verifying your payment.';
+          });
+      },
+      modal: {
+        // Covers the case where the customer closes the Razorpay widget
+        // without completing payment — no server call happens otherwise.
+        ondismiss: function () {
+          document.getElementById('payStatus').textContent = 'Payment cancelled.';
+        },
+      },
+      theme: { color: '#B45309' },
+    };
+    var rzp = new Razorpay(options);
+    rzp.open();
+  });
+</script>
+
+<%- include('../layouts/dashboard-foot') %>

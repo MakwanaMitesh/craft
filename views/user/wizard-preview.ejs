@@ -1,0 +1,22 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<% if (card.occasion === 'proposal') { %>
+  <%- include('../partials/wizard-steps-proposal', { step }) %>
+<% } else { %>
+  <%- include('../partials/wizard-steps', { step }) %>
+<% } %>
+
+<div class="max-w-md card-panel mx-auto mb-4">
+  <iframe
+    src="/dashboard/cards/<%= card._id %>/preview"
+    class="w-full rounded-xl2 border border-amber-100"
+    style="height: 70vh;"
+  ></iframe>
+</div>
+
+<div class="max-w-md mx-auto flex items-center justify-between">
+  <a href="/dashboard/cards/<%= card._id %>/build/music" class="btn-secondary">&larr; Back</a>
+  <a href="/dashboard/cards/<%= card._id %>/checkout" class="btn-primary">Looks great — publish &amp; pay</a>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

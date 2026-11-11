@@ -1,0 +1,94 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<a href="/admin/users" class="text-sm text-amber-700 font-semibold mb-4 inline-block">&larr; Back to users</a>
+
+<div class="card-panel mb-6">
+  <div class="flex items-start justify-between">
+    <div>
+      <h2 class="text-xl font-semibold"><%= user.name %></h2>
+      <p class="text-stone-500"><%= user.email %></p>
+      <p class="text-stone-500"><%= user.phone || 'No phone on file' %></p>
+      <p class="text-stone-400 text-sm mt-1">Joined <%= user.createdAt.toDateString() %></p>
+      <p class="text-stone-400 text-sm">Last login: <%= user.lastLoginAt ? user.lastLoginAt.toLocaleString() : 'Never' %></p>
+      <p class="text-stone-400 text-sm">Total spent: ₹<%= totalSpent %> (<%= orders.length %> paid order<%= orders.length === 1 ? '' : 's' %>)</p>
+    </div>
+    <span class="text-xs font-semibold px-2 py-1 rounded-full <%= user.isBlocked ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-700' %>">
+      <%= user.isBlocked ? 'Blocked' : 'Active' %>
+    </span>
+  </div>
+  <div class="flex flex-wrap gap-2 mt-4">
+    <form action="/admin/users/<%= user._id %>/toggle-block" method="POST"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn-secondary text-sm px-3 py-1.5"><%= user.isBlocked ? 'Unblock' : 'Block' %> user</button>
+    </form>
+    <form action="/admin/users/<%= user._id %>/reset-password" method="POST" onsubmit="return confirm('Send a password reset email to this user?');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn-secondary text-sm px-3 py-1.5">Send password reset email</button>
+    </form>
+    <form action="/admin/users/<%= user._id %>/login-as" method="POST" onsubmit="return confirm('Log in as this user? This is recorded in the audit log.');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn-secondary text-sm px-3 py-1.5">Log in as this user</button>
+    </form>
+    <form action="/admin/users/<%= user._id %>/delete" method="POST" onsubmit="return confirm('Delete this user?');"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn-danger text-sm px-3 py-1.5">Delete user</button>
+    </form>
+  </div>
+</div>
+
+<h3 class="font-semibold mb-3">Orders (<%= orders.length %>)</h3>
+<div class="card-panel overflow-x-auto mb-6">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-stone-500 border-b border-amber-100">
+        <th class="py-2 pr-4">Plan</th>
+        <th class="py-2 pr-4">Amount</th>
+        <th class="py-2 pr-4">Status</th>
+        <th class="py-2 pr-4">Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% orders.forEach(o => { %>
+        <tr class="border-b border-amber-50">
+          <td class="py-2 pr-4"><%= o.plan?.name %></td>
+          <td class="py-2 pr-4">₹<%= o.amount %></td>
+          <td class="py-2 pr-4"><%= o.status %></td>
+          <td class="py-2 pr-4"><%= o.createdAt.toDateString() %></td>
+        </tr>
+      <% }) %>
+      <% if (!orders.length) { %>
+        <tr><td colspan="4" class="py-6 text-center text-stone-500">No paid orders yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="font-semibold mb-3">Cards (<%= cards.length %>)</h3>
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  <% cards.forEach(card => { %>
+    <div class="card-panel">
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <h4 class="font-semibold"><%= card.recipientName || card.partnerName %></h4>
+        <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600 shrink-0">
+          <%= card.occasion[0].toUpperCase() + card.occasion.slice(1) %>
+        </span>
+      </div>
+      <p class="text-xs text-stone-400 mb-2">
+        <span class="font-semibold <%= card.status === 'paid' ? 'text-amber-700' : 'text-stone-500' %>"><%= card.status %></span>
+        &middot; <%= card.totalViews %> views
+        <% if (card.occasion === 'proposal' && card.respondedYes) { %> &middot; <span class="text-emerald-600 font-semibold">YES 💍</span><% } %>
+      </p>
+      <% if (card.message) { %>
+        <p class="text-sm text-stone-500 line-clamp-2"><%- card.message %></p>
+      <% } else { %>
+        <%# card.question is plain user-submitted text, never run through sanitizeHtml
+            (unlike message/yesMessage) — it must stay escaped, never rendered raw. %>
+        <p class="text-sm text-stone-500 line-clamp-2"><%= card.question || '' %></p>
+      <% } %>
+      <% if (card.status === 'paid') { %>
+        <a href="/c/<%= card.slug %>" target="_blank" class="text-sm text-amber-700 font-semibold mt-2 inline-block">View link</a>
+      <% } %>
+    </div>
+  <% }) %>
+  <% if (!cards.length) { %>
+    <p class="text-stone-500">This customer hasn't created any cards yet.</p>
+  <% } %>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

@@ -1,0 +1,23 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<%- include('../partials/wizard-steps-proposal', { step }) %>
+
+<div class="max-w-xl card-panel">
+  <form action="/dashboard/cards/<%= card._id %>/build/proposal/names" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div>
+      <label class="label" for="partnerName">Partner's name</label>
+      <input class="input-field" type="text" id="partnerName" name="partnerName" value="<%= card.partnerName || '' %>" required />
+    </div>
+    <div>
+      <label class="label" for="senderName">Your name</label>
+      <input class="input-field" type="text" id="senderName" name="senderName" value="<%= card.senderName || '' %>" required />
+    </div>
+
+    <div class="flex items-center justify-between pt-2">
+      <a href="/dashboard/cards/<%= card._id %>/build/template" class="btn-secondary">&larr; Back</a>
+      <button type="submit" class="btn-primary">Continue</button>
+    </div>
+  </form>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

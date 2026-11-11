@@ -1,0 +1,55 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<div class="max-w-lg card-panel mb-6">
+  <h3 class="font-semibold mb-4">Profile details</h3>
+  <form action="/dashboard/profile" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div>
+      <label class="label" for="name">Full name</label>
+      <input class="input-field" type="text" id="name" name="name" value="<%= profileUser.name %>" required />
+    </div>
+    <div>
+      <label class="label">Email</label>
+      <input class="input-field" type="email" value="<%= profileUser.email %>" disabled />
+    </div>
+    <div>
+      <label class="label" for="phone">Phone</label>
+      <input class="input-field" type="tel" id="phone" name="phone" value="<%= profileUser.phone || '' %>" />
+    </div>
+    <div class="pt-2 border-t border-amber-100">
+      <p class="label mb-2">Email notifications</p>
+      <p class="text-xs text-stone-400 mb-2">You'll always see these in the bell icon — this only controls whether we also email you.</p>
+      <div class="space-y-2">
+        <label class="flex items-center gap-2 text-sm font-semibold text-stone-700">
+          <input type="checkbox" name="notifyOnCardOpened" class="rounded border-stone-300" <%= profileUser.notifyOnCardOpened ? 'checked' : '' %> />
+          Email me when a card is opened for the first time
+        </label>
+        <label class="flex items-center gap-2 text-sm font-semibold text-stone-700">
+          <input type="checkbox" name="notifyOnProposalYes" class="rounded border-stone-300" <%= profileUser.notifyOnProposalYes ? 'checked' : '' %> />
+          Email me when a proposal gets a YES
+        </label>
+      </div>
+    </div>
+    <button type="submit" class="btn-primary">Save changes</button>
+  </form>
+</div>
+
+<div class="max-w-lg card-panel">
+  <h3 class="font-semibold mb-4">Change password</h3>
+  <form action="/dashboard/profile/password" method="POST" class="space-y-4"><input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div>
+      <label class="label" for="currentPassword">Current password</label>
+      <input class="input-field" type="password" id="currentPassword" name="currentPassword" required />
+    </div>
+    <div>
+      <label class="label" for="newPassword">New password</label>
+      <input class="input-field" type="password" id="newPassword" name="newPassword" minlength="8" required />
+    </div>
+    <div>
+      <label class="label" for="confirmPassword">Confirm new password</label>
+      <input class="input-field" type="password" id="confirmPassword" name="confirmPassword" minlength="8" required />
+    </div>
+    <button type="submit" class="btn-primary">Change password</button>
+  </form>
+</div>
+
+<%- include('../layouts/dashboard-foot') %>

@@ -1,0 +1,349 @@
+<%
+  const fontPair = card.template.getFontPair();
+  const theme = card.template.colorTheme;
+  const selectedTrack = (card.template.musicTracks || [])[0];
+  const photos = card.photos || [];
+
+  const messageLines = (card.yesMessage || '')
+    .split(/<\/p>|<p>|<br\s*\/?>/gi)
+    .map((l) => l.trim())
+    .filter(Boolean);
+%>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+
+  <% if (typeof canonicalUrl !== 'undefined' && canonicalUrl) { %>
+    <link rel="canonical" href="<%= canonicalUrl %>" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="<%= canonicalUrl %>" />
+    <meta property="og:title" content="<%= title %>" />
+    <meta property="og:description" content="<%= typeof ogDescription !== 'undefined' ? ogDescription : '' %>" />
+    <% if (typeof ogImage !== 'undefined' && ogImage) { %><meta property="og:image" content="<%= ogImage %>" /><% } %>
+    <meta name="twitter:card" content="<%= typeof ogImage !== 'undefined' && ogImage ? 'summary_large_image' : 'summary' %>" />
+    <meta name="twitter:title" content="<%= title %>" />
+    <meta name="twitter:description" content="<%= typeof ogDescription !== 'undefined' ? ogDescription : '' %>" />
+  <% } %>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=<%= fontPair.heading.replace(/ /g, '+') %>:wght@500;600;700&family=<%= fontPair.body.replace(/ /g, '+') %>:wght@400;600;700&family=Caveat:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/output.css" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <% if ((typeof isPreview === 'undefined' || !isPreview) && settings.features?.cardViewTrackingEnabled !== false) { %>
+  <script>window.__CARD_SLUG__ = '<%= card.slug %>';</script>
+  <script src="/js/tracking.js"></script>
+  <% } %>
+
+  <style>
+    :root {
+      --primary: <%= theme.primary %>;
+      --secondary: <%= theme.secondary %>;
+      --background: <%= theme.background %>;
+      --font-heading: '<%= fontPair.heading %>', ui-rounded, sans-serif;
+      --font-body: '<%= fontPair.body %>', ui-sans-serif, sans-serif;
+      --font-hand: 'Caveat', cursive;
+    }
+    html, body { height: 100%; overflow: hidden; font-family: var(--font-body); }
+    h1, h2, h3 { font-family: var(--font-heading); }
+    .stage {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, var(--background), color-mix(in srgb, var(--primary) 14%, var(--background)));
+      overflow: hidden;
+    }
+    .screen {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      padding: 1.5rem; text-align: center;
+    }
+    .screen.active { opacity: 1; pointer-events: auto; }
+    .preview-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: #1c1917; color: #fff; font-size: 0.75rem; font-weight: 600;
+      text-align: center; padding: 0.35rem;
+    }
+
+    .tap-heart { width: 120px; cursor: pointer; }
+    .tap-hint { margin-top: 1rem; font-size: 0.875rem; color: #a8a29e; }
+
+    .question-sticker { width: 110px; height: 110px; object-fit: contain; margin-bottom: 0.5rem; }
+    .animated-sticker { animation: sticker-bob 2s ease-in-out infinite; }
+    @keyframes sticker-bob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+    .question-text { font-size: 1.6rem; color: #44403c; max-width: 420px; }
+    .answer-buttons { position: relative; display: flex; gap: 1.5rem; margin-top: 2.5rem; min-height: 60px; }
+    .yes-btn {
+      background: var(--primary); color: #fff; border: none; border-radius: 999px;
+      padding: 0.9rem 2.2rem; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+      transform-origin: center;
+    }
+    .no-btn {
+      background: #fff; color: var(--secondary); border: 2px solid var(--secondary); border-radius: 999px;
+      padding: 0.9rem 2.2rem; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+      transform-origin: center; white-space: nowrap;
+    }
+
+    .celebration-sticker { width: 90px; height: 90px; object-fit: contain; }
+    .slideshow {
+      position: relative; width: min(240px, 70vw); height: min(240px, 70vw);
+      border-radius: 14px; overflow: hidden; margin: 1rem auto; box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+    }
+    .slideshow-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+    .yes-message {
+      font-family: var(--font-hand); font-size: 1.5rem; line-height: 1.5; color: #44403c;
+      max-width: 440px; opacity: 0;
+    }
+    .ending-replay { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+
+    .music-toggle {
+      position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 40;
+      width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
+      background: var(--primary); color: #fff; font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <% if (typeof isPreview !== 'undefined' && isPreview) { %>
+    <div class="preview-banner">PREVIEW — dummy content, nothing is saved or sent</div>
+  <% } %>
+
+  <div class="stage">
+    <section id="screen-tap" class="screen active">
+      <svg class="tap-heart" id="tapHeart" viewBox="0 0 100 100">
+        <path d="M50 88 C20 65 5 45 5 28 C5 12 18 2 32 2 C40 2 47 7 50 14 C53 7 60 2 68 2 C82 2 95 12 95 28 C95 45 80 65 50 88 Z" fill="var(--secondary)" />
+      </svg>
+      <h1 class="text-2xl mt-6 text-stone-700">A question for <%= card.partnerName %> 💭</h1>
+      <p class="tap-hint">Tap the heart to find out</p>
+    </section>
+
+    <section id="screen-question" class="screen">
+      <% if (card.sticker) { %><img src="<%= card.sticker %>" alt="Sticker" class="question-sticker animated-sticker" id="questionSticker" /><% } %>
+      <p class="text-sm font-semibold text-stone-400 mb-1" id="partnerNameLabel"><%= card.partnerName %></p>
+      <h2 class="question-text" id="questionText"><%= card.question %></h2>
+      <div class="answer-buttons" id="answerButtons">
+        <button type="button" class="yes-btn" id="yesButton">YES</button>
+        <button type="button" class="no-btn" id="noButton">NO</button>
+      </div>
+    </section>
+
+    <section id="screen-celebration" class="screen">
+      <% if (card.sticker) { %><img src="<%= card.sticker %>" alt="Sticker" class="celebration-sticker mb-3" /><% } %>
+      <h2 class="text-2xl text-stone-800" id="celebrationHeading">They said YES! 🎉</h2>
+
+      <% if (photos.length) { %>
+        <div class="slideshow" id="slideshow">
+          <% photos.forEach((photo, i) => { %>
+            <img src="<%= photo %>" alt="Memory" class="slideshow-img" data-index="<%= i %>" style="opacity: <%= i === 0 ? 1 : 0 %>;" />
+          <% }) %>
+        </div>
+      <% } %>
+
+      <div id="yesMessageLines">
+        <% messageLines.forEach(line => { %>
+          <p class="yes-message"><%- line %></p>
+        <% }) %>
+      </div>
+
+      <p class="text-stone-500 mt-4">Made with love by <%= card.senderName %></p>
+      <% if (settings.features?.poweredByFooterEnabled !== false) { %>
+        <p class="text-xs text-stone-300 mt-1">Made with <%= settings.siteName %></p>
+      <% } %>
+      <div class="ending-replay">
+        <button id="replayButton" class="btn-secondary">↺ Replay</button>
+        <a href="/" class="btn-primary">Create your own card</a>
+      </div>
+    </section>
+  </div>
+
+  <% if (selectedTrack) { %>
+    <audio id="bgMusic" loop src="<%= selectedTrack.url %>"></audio>
+    <button id="musicToggle" class="music-toggle" aria-label="Toggle music" style="display:none;">🔈</button>
+  <% } %>
+
+  <script>
+    const colors = ['<%= theme.primary %>', '<%= theme.secondary %>', '#FDE68A', '#FCA5A5', '#A7F3D0'];
+
+    function track(type) {
+      if (window.CelebraTrack) window.CelebraTrack.event(type);
+    }
+
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach((s) => {
+        s.classList.remove('active');
+        // gsap.fromTo() sets an inline opacity style, which beats the
+        // .screen{opacity:0} class rule — removing the class alone isn't
+        // enough once a screen has been shown before.
+        gsap.set(s, { opacity: 0 });
+      });
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('active');
+      gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: 'power1.out' });
+    }
+
+    gsap.to('#tapHeart', { scale: 1.08, duration: 0.8, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+
+    document.getElementById('tapHeart').addEventListener('click', () => {
+      track('tapped_open');
+      const music = document.getElementById('bgMusic');
+      const toggle = document.getElementById('musicToggle');
+      if (music && toggle) {
+        toggle.style.display = 'block';
+        music.play().catch(() => {});
+      }
+      <% if (typeof isPreview === 'undefined' || !isPreview) { %>
+      fetch('/c/<%= card.slug %>/opened', { method: 'POST' }).catch(() => {});
+      <% } %>
+      showScreen('screen-question');
+    });
+
+    // --- The NO button dodges, grows harder to hit, and talks back ---
+    const noButton = document.getElementById('noButton');
+    const yesButton = document.getElementById('yesButton');
+    const NO_LINES = ['NO', 'Are you sure?', 'Think again 🥺', 'Please? 💕', 'Pretty please?', "Don't do this 🥹", 'Last chance!'];
+    let dodgeCount = 0;
+    let noPositioned = false;
+
+    function pinNoButtonToViewport() {
+      // Starts the dodge from wherever the button actually is on screen
+      // (normal flex-centered flow) rather than snapping to a fixed
+      // starting point — keeps the first dodge visually continuous.
+      const rect = noButton.getBoundingClientRect();
+      noButton.style.position = 'fixed';
+      noButton.style.margin = '0';
+      noButton.style.left = rect.left + 'px';
+      noButton.style.top = rect.top + 'px';
+      noPositioned = true;
+    }
+
+    function dodgeNo() {
+      track('no_attempt');
+      if (!noPositioned) pinNoButtonToViewport();
+      dodgeCount += 1;
+
+      noButton.textContent = NO_LINES[Math.min(dodgeCount - 1, NO_LINES.length - 1)];
+
+      // Each attempt: YES grows (easier target), NO shrinks (harder target) —
+      // capped so NO never disappears and YES never overwhelms the screen.
+      const yesScale = Math.min(1 + dodgeCount * 0.08, 1.9);
+      const noScale = Math.max(1 - dodgeCount * 0.07, 0.45);
+      gsap.to(yesButton, { scale: yesScale, duration: 0.3, ease: 'back.out(2)' });
+      gsap.to(noButton, { scale: noScale, duration: 0.3 });
+
+      // Jump anywhere in the viewport, clamped so the button — at its
+      // current (possibly shrunk) size — always stays fully on screen.
+      const btnRect = noButton.getBoundingClientRect();
+      const margin = 16;
+      const maxX = Math.max(window.innerWidth - btnRect.width - margin, margin);
+      const maxY = Math.max(window.innerHeight - btnRect.height - margin, margin);
+      const x = margin + Math.random() * (maxX - margin);
+      const y = margin + Math.random() * (maxY - margin);
+      gsap.to(noButton, { left: x, top: y, duration: 0.35, ease: 'power2.out' });
+      // No network call here — dodgeCount is submitted once, together with
+      // the answer itself, when YES is eventually pressed (see below).
+    }
+
+    noButton.addEventListener('mouseenter', dodgeNo);
+    noButton.addEventListener('touchstart', (e) => { e.preventDefault(); dodgeNo(); }, { passive: false });
+    noButton.addEventListener('click', (e) => { e.preventDefault(); dodgeNo(); });
+    window.addEventListener('resize', () => {
+      // A shrunk/grown viewport (e.g. mobile rotation) could leave the
+      // button stranded off-screen — just re-pin it to a safe spot.
+      if (noPositioned) { noPositioned = false; }
+    });
+
+    // --- Photo slideshow (celebration screen) ---
+    const slideshowImgs = document.querySelectorAll('.slideshow-img');
+    if (slideshowImgs.length > 1) {
+      let current = 0;
+      setInterval(() => {
+        const next = (current + 1) % slideshowImgs.length;
+        gsap.to(slideshowImgs[current], { opacity: 0, duration: 0.7 });
+        gsap.to(slideshowImgs[next], { opacity: 1, duration: 0.7 });
+        current = next;
+      }, 2800);
+    }
+
+    function heartConfettiBurst() {
+      const heartShape = typeof confetti.shapeFromText === 'function' ? confetti.shapeFromText({ text: '❤️', scalar: 3 }) : null;
+      const burst = (opts) => confetti(heartShape ? { ...opts, shapes: [heartShape], scalar: 3 } : { ...opts, colors });
+      burst({ particleCount: 60, spread: 100, origin: { y: 0.5 } });
+      setTimeout(() => burst({ particleCount: 40, spread: 120, origin: { y: 0.4 } }), 300);
+    }
+
+    // --- YES pressed ---
+    document.getElementById('yesButton').addEventListener('click', () => {
+      track('yes_clicked');
+      heartConfettiBurst();
+
+      <% if (typeof isPreview === 'undefined' || !isPreview) { %>
+      // One call, carrying both the answer and however many times NO was
+      // dodged — the server only ever saves the first response it gets.
+      fetch('/api/cards/<%= card.slug %>/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noAttempts: dodgeCount }),
+      }).catch(() => {});
+      <% } %>
+
+      showScreen('screen-celebration');
+      gsap.to('.yes-message', { opacity: 1, duration: 0.5, stagger: 0.5, delay: 0.4, ease: 'power1.out' });
+    });
+
+    // --- Replay ---
+    document.getElementById('replayButton').addEventListener('click', () => {
+      dodgeCount = 0;
+      noPositioned = false;
+      noButton.style.position = '';
+      noButton.style.left = '';
+      noButton.style.top = '';
+      noButton.textContent = 'NO';
+      gsap.set(noButton, { scale: 1 });
+      gsap.set(yesButton, { scale: 1 });
+      gsap.set('.yes-message', { opacity: 0 });
+      const music = document.getElementById('bgMusic');
+      if (music) { music.pause(); music.currentTime = 0; }
+      const musicToggle = document.getElementById('musicToggle');
+      if (musicToggle) { musicToggle.style.display = 'none'; musicToggle.textContent = '🔈'; }
+      showScreen('screen-tap');
+    });
+
+    const musicToggle = document.getElementById('musicToggle');
+    if (musicToggle) {
+      musicToggle.addEventListener('click', () => {
+        const music = document.getElementById('bgMusic');
+        if (music.paused) {
+          music.play();
+          musicToggle.textContent = '🔈';
+        } else {
+          music.pause();
+          musicToggle.textContent = '🔇';
+        }
+      });
+    }
+
+    <% if (card.respondedYes) { %>
+    // Already answered on an earlier visit — skip the question entirely
+    // and go straight to the celebration recap. No confetti this time
+    // (that belongs to the actual moment of saying yes, not every reopen)
+    // and music only attempts to play since autoplay-with-sound needs a
+    // user gesture most browsers won't grant on a silent page load.
+    showScreen('screen-celebration');
+    gsap.set('.yes-message', { opacity: 1 });
+    const existingMusic = document.getElementById('bgMusic');
+    const existingToggle = document.getElementById('musicToggle');
+    if (existingMusic && existingToggle) {
+      existingToggle.style.display = 'block';
+      existingMusic.play().catch(() => {});
+    }
+    <% } %>
+  </script>
+</body>
+</html>
