@@ -4,7 +4,7 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const { generateCardSlug } = require('../utils/tokens');
 const { storeImages } = require('../utils/mediaStorage');
-const { calcAnniversaryNumber } = require('../utils/ordinal');
+const { ordinalSuffix, calcAnniversaryNumber } = require('../utils/ordinal');
 
 // This file is the home for the new "Interactive Surprise Cards" feature
 // (kept separate from the existing publicController/cardController, which
@@ -85,6 +85,23 @@ exports.viewSurpriseCard = catchAsync(async (req, res) => {
 
   if (card.type === 'apology') {
     return res.render('public/apology-recipient', { title: `A message for ${card.recipientName} 💛`, card });
+  }
+
+  if (card.type === 'anniversary') {
+    // Passed as plain UTC month/day numbers, not the Date object itself —
+    // the client reconstructs "next anniversary" with new Date(year, month,
+    // day) in the recipient's own local time, with no UTC-to-local
+    // conversion step to introduce an off-by-one-day error for anyone west
+    // of UTC (an HTML <input type="date"> value has no time component, so
+    // it's stored as UTC midnight; re-parsing that as a client-local
+    // timestamp would otherwise shift the displayed date back a day).
+    return res.render('public/anniversary-recipient', {
+      title: `For ${card.recipientName}, with love 💍`,
+      card,
+      anniversaryLabel: `${ordinalSuffix(card.fields.anniversaryNumber)} anniversary`.toUpperCase(),
+      togetherMonth: card.fields.togetherDate.getUTCMonth(),
+      togetherDay: card.fields.togetherDate.getUTCDate(),
+    });
   }
 
   // No other type exists yet — unreachable with the current SURPRISE_CARD_TYPES enum.

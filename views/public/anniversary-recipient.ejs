@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <meta name="description" content="A little surprise for <%= card.recipientName %>." />
+  <!-- Deliberately generic Open Graph text — WhatsApp/Instagram shouldn't spoil the card before it's opened. -->
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="Tap to open." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,700;1,500&family=DM+Sans:wght@400;500;600&family=Caveat:wght@500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    .theme-anniversary {
+      --gold: #C9A86A;
+      --rose: #D8A7A7;
+      --cocoa: #3E2F2B;
+      background: #FBF6EE;
+      height: 100%;
+    }
+    .an-italic { font-family: var(--font-heading); font-style: italic; }
+
+    /* ===== Framed-invitation border ===== */
+    .ann-frame {
+      position: fixed; inset: 12px;
+      border: 1px solid var(--gold);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* ===== Screen 1: Our Day ===== */
+    .ann-eyebrow {
+      font-family: var(--font-body); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold);
+    }
+    .ann-illustration-wrap { position: relative; width: 160px; height: 110px; }
+    .ann-illustration-wrap svg { width: 100%; height: 100%; }
+    .ann-hearts-layer { position: absolute; inset: -20px; overflow: visible; pointer-events: none; }
+
+    .ann-countdown { display: flex; gap: 0.75rem; }
+    .ann-countdown-box {
+      background: var(--white-soft); border: 1px solid rgba(201,168,106,0.35);
+      border-radius: 12px; padding: 0.75rem 0.9rem; min-width: 64px; text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+    .ann-countdown-num {
+      font-family: var(--font-heading); font-size: 1.9rem; font-weight: 600; color: var(--cocoa);
+      transition: opacity 250ms var(--ease-soft), transform 250ms var(--ease-soft);
+    }
+    .ann-countdown-num.ann-flip { opacity: 0; transform: translateY(-6px); }
+    .ann-countdown-label {
+      font-family: var(--font-body); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.55; margin-top: 0.2rem;
+    }
+    .ann-countdown-date { font-size: 14px; opacity: 0.7; margin-top: 0.75rem; }
+    .ann-today-message { font-size: 1.5rem; font-weight: 600; color: var(--gold); }
+
+    .ann-question-wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .ann-buttons { display: flex; gap: 1rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ann-countdown-num { transition: none; }
+    }
+  </style>
+</head>
+<body class="sc-root theme-anniversary">
+  <div class="ann-frame"></div>
+
+  <div class="sc-screen-container">
+    <!-- ===== Screen 1: Our Day ===== -->
+    <section class="sc-screen sc-active" id="screen-our-day">
+      <p class="ann-eyebrow"><%= anniversaryLabel %></p>
+      <h1 class="sc-heading an-italic" style="margin-bottom: 0.25rem;">Happy Anniversary, my love</h1>
+
+      <div class="ann-illustration-wrap">
+        <div class="ann-hearts-layer" id="annHeartsLayer"></div>
+        <%- include('../partials/couple-illustration-svg', { style: card.fields.illustrationStyle }) %>
+      </div>
+
+      <div id="countdownArea">
+        <div class="ann-countdown" id="countdownBoxes">
+          <div class="ann-countdown-box"><p class="ann-countdown-num" id="cdDays">00</p><p class="ann-countdown-label">Days</p></div>
+          <div class="ann-countdown-box"><p class="ann-countdown-num" id="cdHours">00</p><p class="ann-countdown-label">Hrs</p></div>
+          <div class="ann-countdown-box"><p class="ann-countdown-num" id="cdMinutes">00</p><p class="ann-countdown-label">Min</p></div>
+          <div class="ann-countdown-box"><p class="ann-countdown-num" id="cdSeconds">00</p><p class="ann-countdown-label">Sec</p></div>
+        </div>
+        <p class="ann-countdown-date" id="countdownDate"></p>
+      </div>
+
+      <div class="ann-question-wrap">
+        <h2 id="questionText" style="margin: 0;">Ready for a little surprise?</h2>
+        <div class="ann-buttons">
+          <button type="button" class="sc-btn" id="annYesBtn">Yes</button>
+          <button type="button" class="sc-btn sc-btn-outline" id="annNoBtn">No</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Placeholder — Screen 2 isn't built yet; this just confirms the tap
+         registered instead of dead-ending silently. -->
+    <section class="sc-screen" id="screen-next">
+      <h2>…</h2>
+      <p class="sc-body" style="opacity: 0.7;">More of this card is on its way. 💍</p>
+    </section>
+  </div>
+
+  <script src="/js/cardComponents.js"></script>
+  <script>
+    const S = window.SurpriseCard;
+
+    S.startFloatingHearts(document.getElementById('annHeartsLayer'), { color: '#D8A7A7', count: 6, intervalMs: 1400 });
+
+    // --- Countdown to the next anniversary, entirely in local time ---
+    // togetherMonth/togetherDay are plain numbers (month already 0-indexed,
+    // matching JS Date) — reconstructing the date with new Date(y, m, d)
+    // never touches UTC, so there's no off-by-one-day risk for a recipient
+    // west of UTC (see the comment in surpriseCardsController.viewSurpriseCard).
+    const TOGETHER_MONTH = <%= togetherMonth %>;
+    const TOGETHER_DAY = <%= togetherDay %>;
+
+    function nextAnniversaryDate(now) {
+      let next = new Date(now.getFullYear(), TOGETHER_MONTH, TOGETHER_DAY, 0, 0, 0, 0);
+      if (next < now && !isToday(now)) next = new Date(now.getFullYear() + 1, TOGETHER_MONTH, TOGETHER_DAY);
+      return next;
+    }
+    function isToday(now) {
+      return now.getMonth() === TOGETHER_MONTH && now.getDate() === TOGETHER_DAY;
+    }
+
+    const countdownDateEl = document.getElementById('countdownDate');
+    const countdownAreaEl = document.getElementById('countdownArea');
+    const nextDateForLabel = nextAnniversaryDate(new Date());
+    countdownDateEl.textContent = nextDateForLabel.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+
+    let confettiFired = false;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function setNumber(el, value) {
+      const text = String(value).padStart(2, '0');
+      if (el.textContent === text) return;
+      if (!prefersReducedMotion) {
+        el.classList.add('ann-flip');
+        requestAnimationFrame(() => {
+          el.textContent = text;
+          requestAnimationFrame(() => el.classList.remove('ann-flip'));
+        });
+      } else {
+        el.textContent = text;
+      }
+    }
+
+    function tickCountdown() {
+      const now = new Date();
+
+      if (isToday(now)) {
+        if (countdownAreaEl.querySelector('.ann-today-message') === null) {
+          countdownAreaEl.innerHTML = '<p class="ann-today-message">Today is our day! 🎉</p>';
+          if (!confettiFired) {
+            confettiFired = true;
+            S.burstConfetti({ colors: ['#C9A86A', '#D8A7A7', '#FBF6EE'], particleCount: 80, spread: 100 });
+          }
+        }
+        return;
+      }
+
+      const target = nextAnniversaryDate(now);
+      const diffMs = Math.max(target.getTime() - now.getTime(), 0);
+      const days = Math.floor(diffMs / 86400000);
+      const hours = Math.floor((diffMs % 86400000) / 3600000);
+      const minutes = Math.floor((diffMs % 3600000) / 60000);
+      const seconds = Math.floor((diffMs % 60000) / 1000);
+
+      setNumber(document.getElementById('cdDays'), days);
+      setNumber(document.getElementById('cdHours'), hours);
+      setNumber(document.getElementById('cdMinutes'), minutes);
+      setNumber(document.getElementById('cdSeconds'), seconds);
+    }
+    tickCountdown();
+    setInterval(tickCountdown, 1000);
+
+    // --- Question ---
+    const screens = S.createScreenContainer(document.querySelector('.sc-screen-container'));
+    const questionText = document.getElementById('questionText');
+    let askedOnce = false;
+
+    document.getElementById('annNoBtn').addEventListener('click', () => {
+      if (!askedOnce) {
+        askedOnce = true;
+        questionText.textContent = 'Are you sure? 🥺';
+      }
+    });
+    document.getElementById('annYesBtn').addEventListener('click', () => {
+      screens.next();
+    });
+  </script>
+</body>
+</html>
