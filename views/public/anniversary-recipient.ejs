@@ -136,6 +136,27 @@
     @media (prefers-reduced-motion: reduce) {
       .ann-flip-card, .ann-flip-inner { transition: none; }
     }
+
+    /* ===== Screen 4: The Letter ===== */
+    .theme-anniversary .sc-envelope-back { background: var(--cream, #FBF6EE); border: 1px solid var(--gold); }
+    .theme-anniversary .sc-envelope-flap { background: #F3E7CF; border-bottom: 1px solid var(--gold); }
+    .ann-wax-seal {
+      position: absolute; left: 50%; top: 92px; transform: translate(-50%, -50%);
+      width: 36px; height: 36px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #DEBF8C, var(--gold));
+      box-shadow: var(--shadow-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--white-soft); z-index: 2;
+    }
+    .ann-letter-signed { font-family: var(--font-hand); font-size: 1.3rem; opacity: 0; margin-top: 1rem; transition: opacity 500ms var(--ease-soft); }
+    .ann-letter-signed.ann-visible { opacity: 1; }
+
+    /* ===== Screen 5: Together Since ===== */
+    .ann-together-headline { max-width: 480px; }
+    .ann-days-counter {
+      font-family: var(--font-heading); font-size: 1.6rem; color: var(--gold); margin-top: 0.5rem;
+    }
+    .ann-days-label { font-size: 13px; opacity: 0.6; margin-top: 0.2rem; }
   </style>
 </head>
 <body class="sc-root theme-anniversary">
@@ -206,11 +227,30 @@
       <button type="button" class="sc-btn" id="loveNextBtn" style="margin-top: 1.5rem; display: none;">Next →</button>
     </section>
 
-    <!-- Placeholder — the final screen isn't built yet; this just confirms
-         the tap registered instead of dead-ending silently. -->
-    <section class="sc-screen" id="screen-next">
-      <h2>…</h2>
-      <p class="sc-body" style="opacity: 0.7;">More of this card is on its way. 💍</p>
+    <!-- ===== Screen 4: The Letter ===== -->
+    <section class="sc-screen" id="screen-letter">
+      <div class="sc-hearts-layer" id="letterHeartsLayer"></div>
+
+      <div class="sc-envelope-wrap" id="annEnvelope" style="position: relative; z-index: 1;">
+        <div class="sc-envelope-back"></div>
+        <div class="sc-envelope-flap"></div>
+        <div class="ann-wax-seal">💛</div>
+      </div>
+      <div class="sc-letter" id="annLetter" style="position: relative; z-index: 1;">
+        <p class="sc-letter-text" id="annLetterText"></p>
+        <p class="ann-letter-signed" id="annLetterSigned">Yours, always, <%= card.senderName %></p>
+      </div>
+    </section>
+
+    <!-- ===== Screen 5: Together Since ===== -->
+    <section class="sc-screen" id="screen-together">
+      <h1 class="sc-heading an-italic ann-together-headline" id="togetherHeadline"></h1>
+      <p class="ann-days-counter" id="daysCounter"></p>
+      <p class="ann-days-label">total days together, and counting</p>
+      <div class="ann-buttons" style="margin-top: 1.5rem;">
+        <button type="button" class="sc-btn sc-btn-outline" id="reliveBtn">Relive it again 🔁</button>
+        <a href="/cards/anniversary/create" class="sc-btn sc-btn-gold">Create your own ✨</a>
+      </div>
     </section>
   </div>
 
@@ -307,13 +347,16 @@
     const screenOrder = ['screen-our-day'];
     if (HAS_TIMELINE) screenOrder.push('screen-our-story');
     if (HAS_LOVE_LINES) screenOrder.push('screen-love');
-    screenOrder.push('screen-next');
+    screenOrder.push('screen-letter', 'screen-together');
 
     let currentScreenIndex = 0;
     function showScreenByOrderIndex(i) {
       currentScreenIndex = Math.min(Math.max(i, 0), screenOrder.length - 1);
       document.querySelectorAll('.sc-screen').forEach((el) => el.classList.remove('sc-active'));
-      document.getElementById(screenOrder[currentScreenIndex]).classList.add('sc-active');
+      const activeId = screenOrder[currentScreenIndex];
+      document.getElementById(activeId).classList.add('sc-active');
+      if (activeId === 'screen-letter') startLetterScreen();
+      if (activeId === 'screen-together') startTogetherScreen();
     }
     function goToNextScreen() {
       showScreenByOrderIndex(currentScreenIndex + 1);
@@ -368,6 +411,81 @@
       revealLoveCard(0);
       loveNextBtn.addEventListener('click', goToNextScreen);
     }
+
+    // --- Screen 4: The Letter ---
+    let letterStarted = false;
+    function startLetterScreen() {
+      if (letterStarted) return;
+      letterStarted = true;
+
+      S.startFloatingHearts(document.getElementById('letterHeartsLayer'), { color: '#D8A7A7', count: 10 });
+
+      S.createEnvelopeLetter({
+        wrapEl: document.getElementById('annEnvelope'),
+        letterEl: document.getElementById('annLetter'),
+        textEl: document.getElementById('annLetterText'),
+        text: <%- JSON.stringify(card.fields.letterText) %>,
+        onOpen: () => {
+          const typedLength = <%- JSON.stringify(card.fields.letterText) %>.length;
+          const revealDelay = prefersReducedMotion ? 0 : 500 + typedLength * 28 + 300;
+          setTimeout(() => document.getElementById('annLetterSigned').classList.add('ann-visible'), revealDelay);
+        },
+      });
+
+      // The envelope starts closed, but needs an explicit tap — give it a
+      // gentle pulse so it's obvious it's interactive.
+      document.getElementById('annEnvelope').classList.add('sc-tap-continue');
+    }
+
+    // --- Screen 5: Together Since ---
+    const TOGETHER_YEAR = <%= togetherYear %>;
+    let togetherStarted = false;
+    let togetherTimer = null;
+
+    function diffYearsMonthsDays(start, now) {
+      let years = now.getFullYear() - start.getFullYear();
+      let months = now.getMonth() - start.getMonth();
+      let days = now.getDate() - start.getDate();
+      if (days < 0) {
+        months -= 1;
+        const lastDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+        days += lastDayOfPrevMonth;
+        // A start day that doesn't exist in the borrowed month (e.g. Jan 31
+        // borrowing from a 28/29-day February) can still leave days
+        // negative — there's no exact calendar answer for that case, so
+        // just clamp to 0 rather than ever displaying a negative number.
+        if (days < 0) days = 0;
+      }
+      if (months < 0) {
+        years -= 1;
+        months += 12;
+      }
+      return { years: Math.max(years, 0), months: Math.max(months, 0), days: Math.max(days, 0) };
+    }
+
+    function startTogetherScreen() {
+      if (togetherStarted) return;
+      togetherStarted = true;
+
+      const start = new Date(TOGETHER_YEAR, TOGETHER_MONTH, TOGETHER_DAY);
+      const { years, months, days } = diffYearsMonthsDays(start, new Date());
+      const parts = [];
+      if (years > 0) parts.push(`${years} year${years === 1 ? '' : 's'}`);
+      if (months > 0) parts.push(`${months} month${months === 1 ? '' : 's'}`);
+      parts.push(`${days} day${days === 1 ? '' : 's'}`);
+      const joined = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0];
+      document.getElementById('togetherHeadline').textContent = `Together for ${joined} 💛`;
+
+      const daysCounterEl = document.getElementById('daysCounter');
+      function tickDaysCounter() {
+        const totalDays = (Date.now() - start.getTime()) / 86400000;
+        daysCounterEl.textContent = `${totalDays.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })} days`;
+      }
+      tickDaysCounter();
+      togetherTimer = setInterval(tickDaysCounter, prefersReducedMotion ? 60000 : 1000);
+    }
+
+    document.getElementById('reliveBtn').addEventListener('click', () => location.reload());
   </script>
 </body>
 </html>

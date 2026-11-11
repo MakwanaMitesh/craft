@@ -99,6 +99,7 @@ exports.viewSurpriseCard = catchAsync(async (req, res) => {
       title: `For ${card.recipientName}, with love 💍`,
       card,
       anniversaryLabel: `${ordinalSuffix(card.fields.anniversaryNumber)} anniversary`.toUpperCase(),
+      togetherYear: card.fields.togetherDate.getUTCFullYear(),
       togetherMonth: card.fields.togetherDate.getUTCMonth(),
       togetherDay: card.fields.togetherDate.getUTCDate(),
     });
