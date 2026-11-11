@@ -258,6 +258,29 @@
   <script>
     const S = window.SurpriseCard;
 
+    // A per-second interval is wasted work (and a real battery drain on a
+    // phone) while the tab/app isn't even visible — pause it entirely in
+    // that case, and resync immediately (not just resume ticking) the
+    // moment it becomes visible again, so the countdown never sits stale.
+    function startPausableInterval(fn, ms) {
+      let timer = null;
+      function start() {
+        if (timer) return;
+        fn();
+        timer = setInterval(fn, ms);
+      }
+      function stop() {
+        clearInterval(timer);
+        timer = null;
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') stop();
+        else start();
+      });
+      start();
+      return { stop };
+    }
+
     S.startFloatingHearts(document.getElementById('annHeartsLayer'), { color: '#D8A7A7', count: 6, intervalMs: 1400 });
 
     // --- Countdown to the next anniversary, entirely in local time ---
@@ -268,13 +291,29 @@
     const TOGETHER_MONTH = <%= togetherMonth %>;
     const TOGETHER_DAY = <%= togetherDay %>;
 
-    function nextAnniversaryDate(now) {
-      let next = new Date(now.getFullYear(), TOGETHER_MONTH, TOGETHER_DAY, 0, 0, 0, 0);
-      if (next < now && !isToday(now)) next = new Date(now.getFullYear() + 1, TOGETHER_MONTH, TOGETHER_DAY);
-      return next;
+    // A Feb 29 anniversary has no real date to land on in a non-leap year —
+    // new Date(year, 1, 29) silently rolls over to March 1st if that year
+    // has no Feb 29, which would also mean isToday() could never match on
+    // Feb 28 (the conventional day "leaplings" celebrate on instead). Both
+    // functions resolve the actual day-of-month to use for a given year
+    // through this before comparing/constructing dates.
+    function isLeapYear(year) {
+      return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    }
+    function observedDayForYear(year) {
+      if (TOGETHER_MONTH === 1 && TOGETHER_DAY === 29 && !isLeapYear(year)) return 28;
+      return TOGETHER_DAY;
     }
     function isToday(now) {
-      return now.getMonth() === TOGETHER_MONTH && now.getDate() === TOGETHER_DAY;
+      return now.getMonth() === TOGETHER_MONTH && now.getDate() === observedDayForYear(now.getFullYear());
+    }
+    function nextAnniversaryDate(now) {
+      let next = new Date(now.getFullYear(), TOGETHER_MONTH, observedDayForYear(now.getFullYear()), 0, 0, 0, 0);
+      if (next < now && !isToday(now)) {
+        const nextYear = now.getFullYear() + 1;
+        next = new Date(nextYear, TOGETHER_MONTH, observedDayForYear(nextYear));
+      }
+      return next;
     }
 
     const countdownDateEl = document.getElementById('countdownDate');
@@ -325,8 +364,7 @@
       setNumber(document.getElementById('cdMinutes'), minutes);
       setNumber(document.getElementById('cdSeconds'), seconds);
     }
-    tickCountdown();
-    setInterval(tickCountdown, 1000);
+    startPausableInterval(tickCountdown, 1000);
 
     // --- Question ---
     const questionText = document.getElementById('questionText');
@@ -440,7 +478,6 @@
     // --- Screen 5: Together Since ---
     const TOGETHER_YEAR = <%= togetherYear %>;
     let togetherStarted = false;
-    let togetherTimer = null;
 
     function diffYearsMonthsDays(start, now) {
       let years = now.getFullYear() - start.getFullYear();
@@ -481,8 +518,7 @@
         const totalDays = (Date.now() - start.getTime()) / 86400000;
         daysCounterEl.textContent = `${totalDays.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })} days`;
       }
-      tickDaysCounter();
-      togetherTimer = setInterval(tickDaysCounter, prefersReducedMotion ? 60000 : 1000);
+      startPausableInterval(tickDaysCounter, prefersReducedMotion ? 60000 : 1000);
     }
 
     document.getElementById('reliveBtn').addEventListener('click', () => location.reload());

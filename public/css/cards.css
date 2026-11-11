@@ -120,6 +120,13 @@
   overflow: hidden;
   background: var(--cream);
 }
+/* Belt-and-suspenders: a single long unbroken word (a name with no spaces,
+   e.g. in Hindi or any script) must wrap inside its own box rather than
+   overflow horizontally on narrow screens. */
+.sc-screen-container, .sc-screen-container * {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 .sc-screen {
   position: absolute;
   inset: 0;
