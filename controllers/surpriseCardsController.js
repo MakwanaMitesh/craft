@@ -527,6 +527,82 @@ exports.answerPuzzleQuestion = catchAsync(async (req, res) => {
   res.json({ success: true });
 });
 
+// Fired by the recipient's own puzzle screen every ~5s while actively
+// playing (never while solved — solvePuzzleCard already recorded the
+// final numbers by then). Deliberately lightweight: a plain overwrite of
+// one small sub-document, no history kept. The 4-second floor is a
+// server-side backstop on top of the client's own 5-second pacing, so a
+// buggy/malicious client firing faster can't turn this into a write-rate
+// problem.
+exports.recordPuzzleProgress = catchAsync(async (req, res) => {
+  const moves = Number(req.body?.moves);
+  const timeSeconds = Number(req.body?.timeSeconds);
+  if (!Number.isFinite(moves) || !Number.isFinite(timeSeconds)) {
+    return res.status(400).json({ success: false });
+  }
+
+  const card = await SurpriseCard.findOne(
+    { slug: req.params.slug, type: 'puzzle' },
+    'recipientAnswer fields.liveProgress'
+  );
+  if (!card) return res.status(404).json({ success: false });
+  if (card.recipientAnswer === 'solved') return res.json({ success: true });
+
+  const lastUpdatedAt = card.fields?.liveProgress?.updatedAt;
+  if (lastUpdatedAt && Date.now() - new Date(lastUpdatedAt).getTime() < 4000) {
+    return res.json({ success: true });
+  }
+
+  await SurpriseCard.updateOne(
+    { slug: req.params.slug },
+    {
+      $set: {
+        'fields.liveProgress': {
+          moves: Math.max(0, Math.round(moves)),
+          timeSeconds: Math.max(0, Math.round(timeSeconds)),
+          updatedAt: new Date(),
+        },
+      },
+    }
+  );
+
+  res.json({ success: true });
+});
+
+// Polled by the sender's results page every 5s (GET, so no CSRF token is
+// needed) — same key-gating as the results page itself. "Live right now"
+// is derived from how recently recordPuzzleProgress last wrote, with a
+// window a bit wider than the recipient's own 5-second send interval so
+// ordinary network/timer jitter doesn't flicker the dot off between beats.
+const LIVE_WINDOW_MS = 10000;
+
+exports.getPuzzleLiveStatus = catchAsync(async (req, res) => {
+  const card = await SurpriseCard.findOne({ slug: req.params.slug, type: 'puzzle' });
+  if (!card || !req.query.key || req.query.key !== card.resultsKey) {
+    return res.status(404).json({ success: false });
+  }
+
+  const solved = card.recipientAnswer === 'solved';
+  const liveProgress = card.fields.liveProgress;
+  const isLiveNow = !solved && Boolean(
+    liveProgress?.updatedAt && Date.now() - new Date(liveProgress.updatedAt).getTime() < LIVE_WINDOW_MS
+  );
+
+  let status = 'not_opened';
+  if (solved) status = 'solved';
+  else if (card.openedAt) status = 'playing';
+
+  res.json({
+    success: true,
+    status,
+    isLiveNow,
+    current: !solved && liveProgress ? { moves: liveProgress.moves, timeSeconds: liveProgress.timeSeconds } : null,
+    solveStats: solved ? card.fields.solveStats : null,
+    questions: card.fields.questions || [],
+    answers: card.fields.answers || {},
+  });
+});
+
 // Private, sender-only status page — gated by a secret `key` query param
 // (card.resultsKey), never the public slug alone. Wrong/missing key gets
 // the exact same 404 as a nonexistent card, so a guess can't distinguish

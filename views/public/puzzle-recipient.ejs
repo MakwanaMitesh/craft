@@ -470,6 +470,7 @@
     function handleSolved() {
       solved = true;
       if (pausableTimer) pausableTimer.stop();
+      if (progressTimer) progressTimer.stop();
 
       board.classList.add('pzr-solved-board');
 
@@ -505,6 +506,19 @@
     });
 
     let pausableTimer = null;
+    let progressTimer = null;
+
+    // At most one write every 5s, as asked — piggybacks on the same
+    // pause-while-hidden behavior as the on-screen timer, so a backgrounded
+    // tab doesn't keep reporting "live" progress that isn't actually happening.
+    function sendProgress() {
+      fetch(`/c/${SLUG}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+        body: JSON.stringify({ moves, timeSeconds: elapsedSeconds, _csrf: CSRF_TOKEN }),
+        keepalive: true,
+      }).catch(() => {});
+    }
 
     function startPuzzle() {
       buildBoard();
@@ -513,6 +527,7 @@
         elapsedSeconds += 1;
         updateStatsLine();
       }, 1000);
+      progressTimer = startPausableInterval(sendProgress, 5000);
     }
 
     // --- SCREEN 3: The Surprise ---

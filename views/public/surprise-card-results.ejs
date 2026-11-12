@@ -27,6 +27,21 @@
     .res-pending { opacity: 0.55; }
     .res-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
     .res-note { font-size: 12px; opacity: 0.55; margin-top: 1.5rem; text-align: center; }
+
+    .res-live-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: #2ecc71; margin-right: 5px; animation: res-live-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes res-live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    @media (prefers-reduced-motion: reduce) { .res-live-dot { animation: none; } }
+    .res-live-label { font-size: 12px; font-weight: 600; color: #2ecc71; margin-left: 0.5rem; }
+
+    .res-answers { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed rgba(74,59,54,0.15); }
+    .res-answers-title { font-weight: 600; font-size: 14px; margin-bottom: 0.75rem; }
+    .res-answer-row { margin-bottom: 0.75rem; }
+    .res-answer-q { font-size: 13px; opacity: 0.65; }
+    .res-answer-a { font-size: 15px; font-weight: 600; }
+    .res-answer-time { font-size: 12px; opacity: 0.5; }
   </style>
 </head>
 <body class="sc-root">
@@ -53,19 +68,20 @@
           </div>
         </div>
 
-        <div class="res-step <%= card.recipientAnswer ? '' : 'res-pending' %>">
-          <% if (card.recipientAnswer === 'solved') { %>
-            <div class="res-icon">🧩</div>
+        <% if (card.type === 'puzzle') { %>
+          <div class="res-step" id="puzzleLiveStep">
+            <div class="res-icon" id="puzzleStatusIcon">⏳</div>
             <div>
-              <p class="res-step-label">Solved!</p>
-              <p class="res-step-time">
-                <%= card.answeredAt.toLocaleString() %> ·
-                <%= card.fields.solveStats.moves %> moves ·
-                <%= String(Math.floor(card.fields.solveStats.timeSeconds / 60)).padStart(2, '0') %>:<%= String(card.fields.solveStats.timeSeconds % 60).padStart(2, '0') %> ·
-                <%= card.fields.solveStats.peeks %> peek<%= card.fields.solveStats.peeks === 1 ? '' : 's' %>
+              <p class="res-step-label">
+                <span id="puzzleStatusLabel">Not opened yet</span>
+                <span id="liveDotWrap" style="display: none;"><span class="res-live-dot"></span><span class="res-live-label">Live</span></span>
               </p>
+              <p class="res-step-time" id="puzzleStatsLine"></p>
             </div>
-          <% } else if (card.recipientAnswer === 'yes') { %>
+          </div>
+        <% } else { %>
+        <div class="res-step <%= card.recipientAnswer ? '' : 'res-pending' %>">
+          <% if (card.recipientAnswer === 'yes') { %>
             <div class="res-icon">💛</div>
             <div>
               <p class="res-step-label">Answered "Yes"</p>
@@ -84,14 +100,22 @@
             </div>
           <% } %>
         </div>
+        <% } %>
       </div>
+
+      <% if (card.type === 'puzzle') { %>
+        <div class="res-answers" id="puzzleAnswers" style="display: none;">
+          <p class="res-answers-title">Answers</p>
+          <div id="puzzleAnswersList"></div>
+        </div>
+      <% } %>
 
       <div class="res-actions">
         <button type="button" class="sc-btn" id="resCopy">Copy card link</button>
         <a href="#" class="sc-btn sc-btn-gold" id="resWhatsapp">Share again on WhatsApp</a>
       </div>
     </div>
-    <p class="res-note">This page is private — only refreshes automatically every 30 seconds.</p>
+    <p class="res-note" id="resNote">This page is private — only refreshes automatically every 30 seconds.</p>
   </div>
 
   <script src="/js/cardComponents.js"></script>
@@ -103,7 +127,94 @@
       whatsappText: 'I made something for you 💛',
     });
 
-    setTimeout(() => location.reload(), 30000);
+    <% if (card.type === 'puzzle') { %>
+      // Puzzle cards get live 5-second polling instead of a 30-second full
+      // reload — the recipient's own puzzle screen is what actually writes
+      // the progress this reads (see recordPuzzleProgress/getPuzzleLiveStatus
+      // in controllers/surpriseCardsController.js).
+      const SLUG = <%- JSON.stringify(card.slug) %>;
+      const KEY = <%- JSON.stringify(card.resultsKey) %>;
+      document.getElementById('resNote').textContent = 'This page is private — updates live while they play.';
+
+      function formatTime(total) {
+        const m = Math.floor(total / 60);
+        const s = total % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+
+      function renderAnswers(questions, answers) {
+        const list = document.getElementById('puzzleAnswersList');
+        const keys = Object.keys(answers || {}).map(Number).sort((a, b) => a - b);
+        if (!keys.length) {
+          document.getElementById('puzzleAnswers').style.display = 'none';
+          return;
+        }
+        document.getElementById('puzzleAnswers').style.display = 'block';
+        list.innerHTML = '';
+        keys.forEach((i) => {
+          const a = answers[i];
+          const row = document.createElement('div');
+          row.className = 'res-answer-row';
+
+          // Built with textContent, not innerHTML — the question text and
+          // answer both ultimately trace back to recipient-submitted input
+          // and must never be interpreted as HTML on this page.
+          const q = document.createElement('p');
+          q.className = 'res-answer-q';
+          q.textContent = a.text;
+          const ans = document.createElement('p');
+          ans.className = 'res-answer-a';
+          ans.textContent = a.answer;
+          const time = document.createElement('p');
+          time.className = 'res-answer-time';
+          time.textContent = new Date(a.answeredAt).toLocaleString();
+
+          row.appendChild(q);
+          row.appendChild(ans);
+          row.appendChild(time);
+          list.appendChild(row);
+        });
+      }
+
+      async function pollLive() {
+        try {
+          const res = await fetch(`/c/${SLUG}/results/live?key=${encodeURIComponent(KEY)}`);
+          const data = await res.json();
+          if (!data.success) return;
+
+          const icon = document.getElementById('puzzleStatusIcon');
+          const label = document.getElementById('puzzleStatusLabel');
+          const stats = document.getElementById('puzzleStatsLine');
+          const liveDotWrap = document.getElementById('liveDotWrap');
+
+          liveDotWrap.style.display = data.isLiveNow ? 'inline' : 'none';
+
+          if (data.status === 'solved' && data.solveStats) {
+            icon.textContent = '🎉';
+            label.textContent = 'Solved! 🎉';
+            stats.textContent = `${data.solveStats.moves} moves · ${formatTime(data.solveStats.timeSeconds)} · ${data.solveStats.peeks} peek${data.solveStats.peeks === 1 ? '' : 's'}`;
+          } else if (data.status === 'playing') {
+            icon.textContent = '🧩';
+            label.textContent = 'Playing now 🧩';
+            stats.textContent = data.current ? `Moves: ${data.current.moves} · ${formatTime(data.current.timeSeconds)}` : 'Just started…';
+          } else {
+            icon.textContent = '⏳';
+            label.textContent = 'Not opened yet';
+            stats.textContent = '';
+          }
+
+          renderAnswers(data.questions, data.answers);
+        } catch {
+          // A missed poll just means the next one (5s later) catches up —
+          // nothing to show the sender for a single dropped request.
+        }
+      }
+
+      pollLive();
+      setInterval(pollLive, 5000);
+    <% } else { %>
+      setTimeout(() => location.reload(), 30000);
+    <% } %>
   </script>
 </body>
 </html>

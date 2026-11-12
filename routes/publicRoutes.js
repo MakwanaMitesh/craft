@@ -56,10 +56,12 @@ router.get('/contact', legalPage('contact'), publicController.getLegalPage);
 // the other's data.
 router.get('/c/:slug', maintenanceGate, publicController.viewCard, surpriseCardsController.viewSurpriseCard);
 router.get('/c/:slug/results', maintenanceGate, surpriseCardsController.getSurpriseCardResults);
+router.get('/c/:slug/results/live', maintenanceGate, surpriseCardsController.getPuzzleLiveStatus);
 router.post('/c/:slug/opened', maintenanceGate, openedLimiter, publicController.markOpened);
 router.post('/c/:slug/answer', maintenanceGate, openedLimiter, surpriseCardsController.answerSurpriseCard);
 router.post('/c/:slug/solve', maintenanceGate, openedLimiter, surpriseCardsController.solvePuzzleCard);
 router.post('/c/:slug/answer-question', maintenanceGate, openedLimiter, surpriseCardsController.answerPuzzleQuestion);
+router.post('/c/:slug/progress', maintenanceGate, trackLimiter, surpriseCardsController.recordPuzzleProgress);
 router.post('/api/cards/:slug/respond', maintenanceGate, openedLimiter, publicController.respondToProposal);
 router.post('/api/track', maintenanceGate, trackLimiter, trackingController.track);
 
