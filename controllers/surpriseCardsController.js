@@ -3,7 +3,7 @@ const SurpriseCard = require('../models/SurpriseCard');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const { generateCardSlug } = require('../utils/tokens');
-const { storeImages } = require('../utils/mediaStorage');
+const { storeImage, storeImages } = require('../utils/mediaStorage');
 const { ordinalSuffix, calcAnniversaryNumber } = require('../utils/ordinal');
 
 // This file is the home for the new "Interactive Surprise Cards" feature
@@ -322,6 +322,127 @@ exports.postAnniversaryCreate = catchAsync(async (req, res) => {
     recipientName: card.recipientName,
     whatsappMessage: `Happy anniversary, my love 💍 Open this: ${shareUrl}`,
     whatsappPreviewTitle: `For ${card.recipientName}, with love 💍`,
+  });
+});
+
+// --- Photo Puzzle ---
+const PUZZLE_DIFFICULTIES = ['easy', 'medium', 'hard'];
+const PUZZLE_GRID_SIZE = { easy: 3, medium: 4, hard: 5 };
+const MAX_PUZZLE_QUESTIONS = 3;
+const QUESTION_TYPES = ['yesno', 'multiple', 'short'];
+
+exports.getPuzzleCreate = (req, res) => {
+  res.render('public/puzzle-create', {
+    title: 'Hide a surprise in a puzzle 🧩',
+    difficulties: PUZZLE_DIFFICULTIES,
+    gridSizes: PUZZLE_GRID_SIZE,
+    maxQuestions: MAX_PUZZLE_QUESTIONS,
+  });
+};
+
+// `questionsJson` travels as a single JSON string field (not parallel-array
+// fields like Anniversary's timeline) since each question's shape varies by
+// type — a multiple-choice question carries 2-4 options, the other two
+// types carry none — and that's awkward to express as flat form fields
+// without yet another originalIndex-style bookkeeping scheme.
+function validatePuzzleQuestions(raw) {
+  if (!raw) return { questions: [] };
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { error: 'Questions could not be read.' };
+  }
+  if (!Array.isArray(parsed)) return { error: 'Questions could not be read.' };
+
+  const questions = [];
+  for (const item of parsed.slice(0, MAX_PUZZLE_QUESTIONS)) {
+    const text = typeof item?.text === 'string' ? item.text.trim() : '';
+    if (!text) continue; // an unfilled question row is just skipped, same as Anniversary's blank timeline rows
+    if (text.length > 150) return { error: 'Keep each question under 150 characters.' };
+
+    const type = QUESTION_TYPES.includes(item?.type) ? item.type : 'short';
+    const question = { text, type };
+
+    if (type === 'multiple') {
+      const options = Array.isArray(item?.options)
+        ? item.options.map((o) => (typeof o === 'string' ? o.trim() : '')).filter(Boolean).slice(0, 4)
+        : [];
+      if (options.length < 2) return { error: 'Multiple choice questions need at least 2 options.' };
+      if (options.some((o) => o.length > 50)) return { error: 'Keep each option under 50 characters.' };
+      question.options = options;
+    }
+
+    questions.push(question);
+  }
+  return { questions };
+}
+
+function validatePuzzleInput(body) {
+  const errors = {};
+  const clean = (v) => (typeof v === 'string' ? v.trim() : '');
+
+  const theirName = clean(body.theirName);
+  if (!theirName) errors.theirName = 'Their name is required.';
+  else if (theirName.length > 30) errors.theirName = 'Keep their name under 30 characters.';
+
+  const yourName = clean(body.yourName);
+  if (!yourName) errors.yourName = 'Your name is required.';
+  else if (yourName.length > 30) errors.yourName = 'Keep your name under 30 characters.';
+
+  const difficulty = clean(body.difficulty) || 'easy';
+  if (!PUZZLE_DIFFICULTIES.includes(difficulty)) errors.difficulty = 'Choose a difficulty.';
+
+  const hiddenMessage = clean(body.hiddenMessage);
+  if (!hiddenMessage) errors.hiddenMessage = "Write the message they'll unlock.";
+  else if (hiddenMessage.length > 300) errors.hiddenMessage = 'Keep this under 300 characters.';
+
+  const { questions, error: questionsError } = validatePuzzleQuestions(body.questionsJson);
+  if (questionsError) errors.questions = questionsError;
+
+  return { errors, values: { theirName, yourName, difficulty, hiddenMessage, questions: questions || [] } };
+}
+
+exports.postPuzzleCreate = catchAsync(async (req, res) => {
+  const { errors, values } = validatePuzzleInput(req.body);
+
+  const files = req.files || [];
+  if (files.length !== 1) {
+    errors.photo = 'Upload and crop one photo for the puzzle.';
+  }
+
+  if (Object.keys(errors).length) {
+    return res.status(422).json({ success: false, errors });
+  }
+
+  const photoUrl = await storeImage(files[0]);
+
+  const card = await SurpriseCard.create({
+    slug: generateCardSlug(),
+    type: 'puzzle',
+    senderName: values.yourName,
+    recipientName: values.theirName,
+    fields: {
+      difficulty: values.difficulty,
+      gridSize: PUZZLE_GRID_SIZE[values.difficulty],
+      hiddenMessage: values.hiddenMessage,
+      questions: values.questions,
+    },
+    photos: [photoUrl],
+  });
+
+  const shareUrl = `${process.env.BASE_URL}/c/${card.slug}`;
+  const resultsUrl = `${process.env.BASE_URL}/c/${card.slug}/results?key=${card.resultsKey}`;
+  const qrDataUrl = await QRCode.toDataURL(shareUrl, { width: 320, margin: 2 });
+
+  res.json({
+    success: true,
+    shareUrl,
+    resultsUrl,
+    qrDataUrl,
+    recipientName: card.recipientName,
+    whatsappMessage: `Solve this to unlock your surprise 🧩🔒 ${shareUrl}`,
+    whatsappPreviewTitle: `${card.recipientName}, a puzzle is waiting for you 🧩`,
   });
 });
 

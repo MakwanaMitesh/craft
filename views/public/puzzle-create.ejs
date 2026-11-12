@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    /* --- Puzzle theme override: everything else is inherited from cards.css --- */
+    .theme-puzzle {
+      --rose: #F28C7A; /* coral — this card's button color, reusing .sc-btn's var(--rose) */
+      --gold: #FFE5A0; /* butter yellow accent */
+      --sky: #BFD7EA;  /* sky blue accent, puzzle-specific, not in the shared palette */
+      background-color: var(--cream);
+      background-image: radial-gradient(rgba(74,59,54,0.08) 1.5px, transparent 1.5px);
+      background-size: 18px 18px;
+      min-height: 100vh;
+      margin: 0;
+    }
+    /* "playful bounce on tap" called for specifically on this card's buttons,
+       overriding .sc-btn's shared, calmer scale-down tap feedback. */
+    .theme-puzzle .sc-btn:active { animation: pz-bounce 320ms var(--ease-soft); }
+    @keyframes pz-bounce {
+      0% { transform: scale(1); }
+      35% { transform: scale(0.9); }
+      65% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .theme-puzzle .sc-btn:active { animation: none; }
+    }
+
+    .pz-wrap { max-width: 1040px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .pz-hero { text-align: center; max-width: 560px; margin: 0 auto 2.5rem; }
+    .pz-hero p { opacity: 0.8; margin-top: 0.75rem; }
+
+    .pz-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+    @media (min-width: 900px) {
+      .pz-grid { grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+      .pz-preview-col { position: sticky; top: 2rem; }
+    }
+
+    .pz-field { margin-bottom: 1.5rem; }
+    .pz-label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 15px; }
+    .pz-hint { font-size: 13px; opacity: 0.65; margin-top: 0.3rem; }
+    .pz-error { font-size: 13px; color: #B3404A; margin-top: 0.3rem; display: none; }
+    .pz-error.pz-show { display: block; }
+    .pz-input, .pz-textarea, .pz-select {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 16px;
+      padding: 0.8rem 1rem;
+      border-radius: 14px;
+      border: 1.5px solid rgba(74,59,54,0.15);
+      background: var(--white-soft);
+      color: var(--cocoa);
+      box-sizing: border-box;
+      transition: border-color 200ms var(--ease-soft);
+    }
+    .pz-input:focus, .pz-textarea:focus, .pz-select:focus { outline: none; border-color: var(--rose); }
+    .pz-textarea { resize: vertical; min-height: 90px; }
+    .pz-count { font-size: 12px; opacity: 0.55; text-align: right; margin-top: 0.25rem; }
+
+    /* --- Difficulty chips --- */
+    .pz-difficulty-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .pz-chip {
+      font-family: var(--font-body); font-size: 14px; font-weight: 500;
+      padding: 0.6rem 1.1rem; border-radius: 999px;
+      border: 1.5px solid rgba(74,59,54,0.15); background: var(--white-soft);
+      cursor: pointer; transition: all 200ms var(--ease-soft);
+    }
+    .pz-chip.pz-chip-active { background: var(--sky); border-color: var(--sky); color: var(--cocoa); font-weight: 700; }
+
+    /* --- Photo upload + crop tool --- */
+    .pz-photo-picker {
+      width: 100%; min-height: 140px; border-radius: 16px;
+      border: 1.5px dashed rgba(74,59,54,0.3); background: var(--white-soft);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.5rem; cursor: pointer; text-align: center; padding: 1.5rem; position: relative;
+    }
+    .pz-photo-picker input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .pz-photo-picker .pz-icon { font-size: 2rem; }
+
+    .pz-cropper { display: none; margin-top: 1rem; }
+    .pz-cropper.pz-cropper-visible { display: block; }
+    .pz-crop-viewport {
+      width: 260px; height: 260px; margin: 0 auto;
+      border-radius: 16px; overflow: hidden; position: relative;
+      background: #1c1917; touch-action: none; cursor: grab;
+      box-shadow: var(--shadow-soft);
+    }
+    .pz-crop-viewport:active { cursor: grabbing; }
+    .pz-crop-viewport img { position: absolute; left: 0; top: 0; max-width: none; user-select: none; pointer-events: none; }
+    .pz-crop-controls { max-width: 260px; margin: 0.9rem auto 0; display: flex; align-items: center; gap: 0.6rem; }
+    .pz-crop-controls input[type="range"] { flex: 1; }
+    .pz-crop-actions { max-width: 260px; margin: 0.9rem auto 0; display: flex; gap: 0.6rem; justify-content: center; }
+
+    .pz-photo-done { display: none; align-items: center; gap: 0.9rem; margin-top: 0.75rem; }
+    .pz-photo-done.pz-photo-done-visible { display: flex; }
+    .pz-photo-done img { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; box-shadow: var(--shadow-soft); }
+
+    /* --- Questions (optional, up to N) --- */
+    .pz-question-row {
+      background: var(--white-soft); border-radius: 14px; box-shadow: var(--shadow-soft);
+      padding: 1rem; margin-bottom: 0.9rem;
+    }
+    .pz-option-row { display: flex; gap: 0.4rem; margin-bottom: 0.4rem; }
+    .pz-option-row .pz-input { flex: 1; }
+    .pz-remove-btn {
+      width: 40px; flex-shrink: 0; border-radius: 10px; border: 1.5px solid rgba(74,59,54,0.15);
+      background: var(--white-soft); color: #B3404A; cursor: pointer; font-size: 16px;
+    }
+
+    /* --- Live preview panel (phone-mockup style) --- */
+    .pz-phone { width: 100%; max-width: 300px; margin: 0 auto; background: #1c1917; border-radius: 2.25rem; padding: 12px; box-shadow: var(--shadow-soft); }
+    .pz-phone-screen {
+      border-radius: 1.75rem; overflow: hidden; min-height: 480px; background: var(--cream);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2rem 1.25rem; text-align: center; gap: 0.75rem;
+    }
+    .pz-preview-grid {
+      width: 220px; height: 220px; border-radius: 12px; overflow: hidden;
+      position: relative; background: var(--white-soft); box-shadow: var(--shadow-soft);
+      display: grid;
+    }
+    .pz-preview-grid img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; grid-row: 1 / -1; grid-column: 1 / -1; }
+    .pz-preview-cell { border: 1px solid rgba(255,255,255,0.55); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); z-index: 1; }
+    .pz-preview-placeholder { font-size: 2.5rem; opacity: 0.4; }
+    .pz-phone-locked { font-weight: 600; opacity: 0.85; display: flex; align-items: center; gap: 0.4rem; }
+
+    .pz-submit-row { margin-top: 1rem; text-align: center; }
+
+    /* --- Full-screen overlay (loading + share) --- */
+    .pz-overlay { position: fixed; inset: 0; z-index: 50; display: none; }
+    .pz-overlay.pz-overlay-visible { display: block; }
+    .pz-loading-piece { animation: pz-spin 1.6s linear infinite; display: inline-block; }
+    @keyframes pz-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .pz-loading-piece { animation: none; }
+    }
+  </style>
+</head>
+<body class="sc-root theme-puzzle">
+
+  <div class="pz-wrap">
+    <div class="pz-hero">
+      <h1>Hide a surprise in a puzzle 🧩</h1>
+      <p class="sc-body">They solve your photo to unlock your secret message.</p>
+    </div>
+
+    <form id="puzzleForm" class="pz-grid" novalidate>
+      <div class="pz-form-col">
+
+        <div class="pz-field">
+          <label class="pz-label" for="theirName">Their name</label>
+          <input class="pz-input" type="text" id="theirName" name="theirName" maxlength="30" required />
+          <p class="pz-error" data-error-for="theirName"></p>
+        </div>
+
+        <div class="pz-field">
+          <label class="pz-label" for="yourName">Your name</label>
+          <input class="pz-input" type="text" id="yourName" name="yourName" maxlength="30" required />
+          <p class="pz-error" data-error-for="yourName"></p>
+        </div>
+
+        <div class="pz-field">
+          <label class="pz-label">Puzzle photo</label>
+          <div class="pz-photo-picker" id="photoPicker">
+            <span class="pz-icon">🖼️</span>
+            <span class="sc-body" style="font-size: 14px;">Tap to choose a photo</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" id="photoInput" />
+          </div>
+
+          <div class="pz-cropper" id="cropper">
+            <p class="pz-hint" style="text-align: center;">Drag to reposition, use the slider to zoom.</p>
+            <div class="pz-crop-viewport" id="cropViewport">
+              <img id="cropImg" alt="" />
+            </div>
+            <div class="pz-crop-controls">
+              <span style="font-size: 13px;">🔍</span>
+              <input type="range" id="zoomSlider" min="1" max="3" step="0.01" value="1" />
+            </div>
+            <div class="pz-crop-actions">
+              <button type="button" class="sc-btn sc-btn-outline" id="cropCancel" style="font-size: 14px; padding: 0.6rem 1.1rem;">Choose different photo</button>
+              <button type="button" class="sc-btn" id="cropConfirm" style="font-size: 14px; padding: 0.6rem 1.1rem;">Use this photo ✅</button>
+            </div>
+          </div>
+
+          <div class="pz-photo-done" id="photoDone">
+            <img id="photoDoneThumb" alt="Cropped puzzle photo" />
+            <button type="button" class="sc-btn sc-btn-outline" id="photoChangeBtn" style="font-size: 14px; padding: 0.6rem 1.1rem;">Change photo</button>
+          </div>
+
+          <p class="pz-error" data-error-for="photo"></p>
+        </div>
+
+        <div class="pz-field">
+          <label class="pz-label">Difficulty</label>
+          <div class="pz-difficulty-row" id="difficultyRow">
+            <% const difficultyLabels = { easy: 'Easy 3×3', medium: 'Medium 4×4', hard: 'Hard 5×5' }; %>
+            <% difficulties.forEach((d, i) => { %>
+              <button type="button" class="pz-chip <%= i === 0 ? 'pz-chip-active' : '' %>" data-difficulty="<%= d %>"><%= difficultyLabels[d] %></button>
+            <% }) %>
+          </div>
+          <input type="hidden" name="difficulty" id="difficultyInput" value="<%= difficulties[0] %>" />
+          <p class="pz-error" data-error-for="difficulty"></p>
+        </div>
+
+        <div class="pz-field">
+          <label class="pz-label" for="hiddenMessage">Hidden message <span class="pz-hint">(revealed after they solve it)</span></label>
+          <textarea class="pz-textarea" id="hiddenMessage" name="hiddenMessage" maxlength="300" placeholder="e.g. Pack your bags, we're going to Goa! 🏖️" required></textarea>
+          <p class="pz-count" data-count-for="hiddenMessage">0 / 300</p>
+          <p class="pz-error" data-error-for="hiddenMessage"></p>
+        </div>
+
+        <div class="pz-field">
+          <label class="pz-label">Questions to ask after solving <span class="pz-hint">(optional, up to <%= maxQuestions %>)</span></label>
+          <div id="questionsList"></div>
+          <button type="button" class="sc-btn sc-btn-outline" id="addQuestionBtn" style="font-size: 14px; padding: 0.6rem 1.25rem;">+ Add question</button>
+          <p class="pz-error" data-error-for="questions"></p>
+        </div>
+
+        <div class="pz-submit-row">
+          <button type="submit" class="sc-btn" id="submitBtn">Create my puzzle 🧩</button>
+        </div>
+      </div>
+
+      <div class="pz-preview-col">
+        <p class="pz-label" style="text-align: center; margin-bottom: 0.75rem;">Live preview</p>
+        <div class="pz-phone">
+          <div class="pz-phone-screen">
+            <div class="pz-preview-grid" id="previewGrid">
+              <span class="pz-preview-placeholder">🧩</span>
+            </div>
+            <p class="pz-phone-locked">🔒 <span id="previewDifficulty">Easy 3×3</span></p>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Hidden templates — cloned by JS, never submitted themselves -->
+  <template id="questionRowTemplate">
+    <div class="pz-question-row">
+      <div style="display:flex; gap:0.5rem; align-items:flex-start;">
+        <div style="flex:1;">
+          <input class="pz-input" type="text" maxlength="150" placeholder='e.g. Are you free this Saturday?' data-q-text style="margin-bottom: 0.5rem;" />
+          <select class="pz-select" data-q-type>
+            <option value="yesno">Yes / No</option>
+            <option value="multiple">Multiple choice</option>
+            <option value="short">Short text answer</option>
+          </select>
+          <div class="pz-options-list" data-q-options style="margin-top:0.6rem; display:none;"></div>
+          <button type="button" class="sc-btn sc-btn-outline" data-q-add-option style="display:none; font-size:12px; padding:0.4rem 0.9rem; margin-top:0.3rem;">+ Add option</button>
+        </div>
+        <button type="button" class="pz-remove-btn" data-q-remove title="Remove question">✕</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="optionRowTemplate">
+    <div class="pz-option-row">
+      <input class="pz-input" type="text" maxlength="50" placeholder="Option" data-option-input />
+      <button type="button" class="pz-remove-btn" data-option-remove title="Remove option">✕</button>
+    </div>
+  </template>
+
+  <!-- ===== Full-screen overlay: loading -> share ===== -->
+  <div class="pz-overlay sc-screen-container" id="overlay">
+    <div class="sc-screen" id="screen-loading">
+      <div class="pz-loading-piece" style="font-size: 3rem;">🧩</div>
+      <h2>Scrambling the pieces…</h2>
+    </div>
+
+    <div class="sc-screen" id="screen-share">
+      <div class="sc-card sc-paper" style="max-width: 420px;">
+        <h2 style="margin-bottom: 0.5rem;">It's ready to send 🧩</h2>
+        <p class="sc-body" id="shareSubtitle" style="opacity: 0.8; margin-bottom: 1rem;"></p>
+        <p class="sc-body" style="word-break: break-all; opacity: 0.7; font-size: 14px;" id="shareUrlText"></p>
+        <div class="sc-share-row" style="margin: 1.25rem 0;">
+          <button type="button" class="sc-btn" id="overlayCopy">Copy link</button>
+          <a href="#" class="sc-btn sc-btn-gold" id="overlayWhatsapp">Send on WhatsApp</a>
+          <a href="#" class="sc-btn sc-btn-outline" id="overlayPreview">Preview</a>
+        </div>
+        <div class="sc-qr-box">
+          <img src="" alt="QR code to the card" id="overlayQr" />
+        </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed rgba(74,59,54,0.2);">
+          <p class="pz-label" style="color: var(--rose); margin-bottom: 0.4rem;">Your private link</p>
+          <p class="sc-body" style="font-size: 13px; opacity: 0.7; margin-bottom: 0.75rem;">
+            See when it's opened and solved — keep this link to yourself, don't send it to <span id="shareRecipientName">them</span>.
+          </p>
+          <div class="sc-share-row">
+            <a href="#" class="sc-btn sc-btn-outline" id="overlayResults" target="_blank" rel="noopener">View status 📊</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/cardComponents.js"></script>
+  <script>
+    const S = window.SurpriseCard;
+    const MAX_QUESTIONS = <%- JSON.stringify(maxQuestions) %>;
+    const GRID_SIZES = <%- JSON.stringify(gridSizes) %>;
+    const DIFFICULTY_LABELS = { easy: 'Easy 3×3', medium: 'Medium 4×4', hard: 'Hard 5×5' };
+
+    // --- Character counter ---
+    const hiddenMessageEl = document.getElementById('hiddenMessage');
+    const hiddenMessageCounter = document.querySelector('[data-count-for="hiddenMessage"]');
+    hiddenMessageEl.addEventListener('input', () => {
+      hiddenMessageCounter.textContent = `${hiddenMessageEl.value.length} / 300`;
+    });
+
+    // --- Difficulty chips ---
+    const difficultyInput = document.getElementById('difficultyInput');
+    const previewDifficultyEl = document.getElementById('previewDifficulty');
+    document.querySelectorAll('#difficultyRow .pz-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#difficultyRow .pz-chip').forEach((c) => c.classList.remove('pz-chip-active'));
+        chip.classList.add('pz-chip-active');
+        difficultyInput.value = chip.getAttribute('data-difficulty');
+        updatePreviewGrid();
+      });
+    });
+
+    // --- Live preview: photo split into the chosen grid ---
+    const previewGrid = document.getElementById('previewGrid');
+    let previewPhotoUrl = null;
+
+    function updatePreviewGrid() {
+      const difficulty = difficultyInput.value;
+      const n = GRID_SIZES[difficulty] || 3;
+      previewDifficultyEl.textContent = DIFFICULTY_LABELS[difficulty] || 'Easy 3×3';
+
+      previewGrid.innerHTML = '';
+      previewGrid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+      previewGrid.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+
+      if (previewPhotoUrl) {
+        const img = document.createElement('img');
+        img.src = previewPhotoUrl;
+        previewGrid.appendChild(img);
+      } else {
+        const placeholder = document.createElement('span');
+        placeholder.className = 'pz-preview-placeholder';
+        placeholder.textContent = '🧩';
+        previewGrid.appendChild(placeholder);
+      }
+
+      for (let i = 0; i < n * n; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'pz-preview-cell';
+        previewGrid.appendChild(cell);
+      }
+    }
+    updatePreviewGrid();
+
+    // --- Photo picker + square crop tool (drag to pan, slider to zoom) ---
+    const photoInput = document.getElementById('photoInput');
+    const photoPicker = document.getElementById('photoPicker');
+    const cropper = document.getElementById('cropper');
+    const cropViewport = document.getElementById('cropViewport');
+    const cropImg = document.getElementById('cropImg');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const cropConfirm = document.getElementById('cropConfirm');
+    const cropCancel = document.getElementById('cropCancel');
+    const photoDone = document.getElementById('photoDone');
+    const photoDoneThumb = document.getElementById('photoDoneThumb');
+    const photoChangeBtn = document.getElementById('photoChangeBtn');
+
+    const VIEWPORT_SIZE = 260;
+    const EXPORT_SIZE = 800;
+    let naturalW = 0, naturalH = 0, coverScale = 1, panX = 0, panY = 0;
+    let puzzlePhotoFile = null; // the final cropped File, set only once "Use this photo" is confirmed
+
+    function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+    function layoutCrop() {
+      const zoom = Number(zoomSlider.value);
+      const w = naturalW * coverScale * zoom;
+      const h = naturalH * coverScale * zoom;
+      cropImg.style.width = `${w}px`;
+      cropImg.style.height = `${h}px`;
+      panX = clamp(panX, VIEWPORT_SIZE - w, 0);
+      panY = clamp(panY, VIEWPORT_SIZE - h, 0);
+      cropImg.style.left = `${panX}px`;
+      cropImg.style.top = `${panY}px`;
+    }
+
+    function openCropper(file) {
+      const url = URL.createObjectURL(file);
+      cropImg.onload = () => {
+        naturalW = cropImg.naturalWidth;
+        naturalH = cropImg.naturalHeight;
+        coverScale = VIEWPORT_SIZE / Math.min(naturalW, naturalH);
+        zoomSlider.value = 1;
+        panX = (VIEWPORT_SIZE - naturalW * coverScale) / 2;
+        panY = (VIEWPORT_SIZE - naturalH * coverScale) / 2;
+        layoutCrop();
+      };
+      cropImg.src = url;
+      cropper.classList.add('pz-cropper-visible');
+      photoDone.classList.remove('pz-photo-done-visible');
+    }
+
+    photoInput.addEventListener('change', () => {
+      const file = photoInput.files[0];
+      if (file) openCropper(file);
+    });
+
+    zoomSlider.addEventListener('input', layoutCrop);
+
+    // Pointer-based drag-to-pan — works for mouse and touch alike.
+    let dragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
+    cropViewport.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      dragStartX = e.clientX; dragStartY = e.clientY;
+      panStartX = panX; panStartY = panY;
+      cropViewport.setPointerCapture(e.pointerId);
+    });
+    cropViewport.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      panX = panStartX + (e.clientX - dragStartX);
+      panY = panStartY + (e.clientY - dragStartY);
+      layoutCrop();
+    });
+    cropViewport.addEventListener('pointerup', () => { dragging = false; });
+    cropViewport.addEventListener('pointercancel', () => { dragging = false; });
+
+    cropCancel.addEventListener('click', () => {
+      cropper.classList.remove('pz-cropper-visible');
+      photoInput.value = '';
+    });
+
+    cropConfirm.addEventListener('click', () => {
+      // Map the visible 260x260 crop viewport back to natural-image
+      // coordinates, then re-render just that region at a fixed export
+      // resolution — this is what actually "bakes in" the drag/zoom choice,
+      // rather than just cropping the original file blindly.
+      const scaleFactor = (naturalW * coverScale * Number(zoomSlider.value)) / naturalW;
+      const sx = -panX / scaleFactor;
+      const sy = -panY / scaleFactor;
+      const sSize = VIEWPORT_SIZE / scaleFactor;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = EXPORT_SIZE;
+      canvas.height = EXPORT_SIZE;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(cropImg, sx, sy, sSize, sSize, 0, 0, EXPORT_SIZE, EXPORT_SIZE);
+
+      canvas.toBlob((blob) => {
+        puzzlePhotoFile = new File([blob], 'puzzle.jpg', { type: 'image/jpeg' });
+        previewPhotoUrl = URL.createObjectURL(blob);
+        photoDoneThumb.src = previewPhotoUrl;
+        updatePreviewGrid();
+
+        cropper.classList.remove('pz-cropper-visible');
+        photoDone.classList.add('pz-photo-done-visible');
+        document.querySelector('[data-error-for="photo"]').classList.remove('pz-show');
+      }, 'image/jpeg', 0.92);
+    });
+
+    photoChangeBtn.addEventListener('click', () => {
+      puzzlePhotoFile = null;
+      previewPhotoUrl = null;
+      photoInput.value = '';
+      photoDone.classList.remove('pz-photo-done-visible');
+      updatePreviewGrid();
+    });
+
+    // --- Questions (dynamic, up to MAX_QUESTIONS) ---
+    const questionsList = document.getElementById('questionsList');
+    const questionTemplate = document.getElementById('questionRowTemplate');
+    const optionTemplate = document.getElementById('optionRowTemplate');
+    const addQuestionBtn = document.getElementById('addQuestionBtn');
+
+    function addOptionRow(optionsList) {
+      if (optionsList.children.length >= 4) return;
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = optionTemplate.innerHTML.trim();
+      const row = wrapper.firstChild;
+      optionsList.appendChild(row);
+      row.querySelector('[data-option-remove]').addEventListener('click', () => {
+        if (optionsList.children.length <= 2) return; // multiple choice needs at least 2 options
+        row.remove();
+        refreshAddOptionVisibility(optionsList);
+      });
+      refreshAddOptionVisibility(optionsList);
+    }
+
+    function refreshAddOptionVisibility(optionsList) {
+      const addBtn = optionsList.parentElement.querySelector('[data-q-add-option]');
+      if (addBtn) addBtn.style.display = optionsList.children.length >= 4 ? 'none' : '';
+    }
+
+    function wireQuestionRow(row) {
+      const typeSelect = row.querySelector('[data-q-type]');
+      const optionsList = row.querySelector('[data-q-options]');
+      const addOptionBtn = row.querySelector('[data-q-add-option]');
+
+      function syncType() {
+        const isMultiple = typeSelect.value === 'multiple';
+        optionsList.style.display = isMultiple ? '' : 'none';
+        addOptionBtn.style.display = isMultiple && optionsList.children.length < 4 ? '' : 'none';
+        if (isMultiple && optionsList.children.length < 2) {
+          while (optionsList.children.length < 2) addOptionRow(optionsList);
+        }
+      }
+      typeSelect.addEventListener('change', syncType);
+      syncType();
+
+      addOptionBtn.addEventListener('click', () => addOptionRow(optionsList));
+
+      row.querySelector('[data-q-remove]').addEventListener('click', () => {
+        row.remove();
+        addQuestionBtn.style.display = questionsList.children.length >= MAX_QUESTIONS ? 'none' : '';
+      });
+    }
+
+    function addQuestion() {
+      if (questionsList.children.length >= MAX_QUESTIONS) return;
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = questionTemplate.innerHTML.trim();
+      const row = wrapper.firstChild;
+      questionsList.appendChild(row);
+      wireQuestionRow(row);
+      addQuestionBtn.style.display = questionsList.children.length >= MAX_QUESTIONS ? 'none' : '';
+    }
+    addQuestionBtn.addEventListener('click', addQuestion);
+
+    function collectQuestions() {
+      const questions = [];
+      Array.from(questionsList.children).forEach((row) => {
+        const text = row.querySelector('[data-q-text]').value.trim();
+        if (!text) return;
+        const type = row.querySelector('[data-q-type]').value;
+        const question = { text, type };
+        if (type === 'multiple') {
+          question.options = Array.from(row.querySelectorAll('[data-option-input]'))
+            .map((input) => input.value.trim())
+            .filter(Boolean);
+        }
+        questions.push(question);
+      });
+      return questions;
+    }
+
+    // --- Validation ---
+    function showErrors(errors) {
+      document.querySelectorAll('.pz-error').forEach((el) => { el.classList.remove('pz-show'); el.textContent = ''; });
+      Object.entries(errors || {}).forEach(([field, message]) => {
+        const el = document.querySelector(`[data-error-for="${field}"]`);
+        if (el) { el.textContent = message; el.classList.add('pz-show'); }
+      });
+    }
+
+    function clientValidate() {
+      const errors = {};
+      if (!document.getElementById('theirName').value.trim()) errors.theirName = 'Their name is required.';
+      if (!document.getElementById('yourName').value.trim()) errors.yourName = 'Your name is required.';
+      if (!hiddenMessageEl.value.trim()) errors.hiddenMessage = "Write the message they'll unlock.";
+      if (!puzzlePhotoFile) errors.photo = 'Upload and confirm a photo for the puzzle.';
+      const questions = collectQuestions();
+      for (const q of questions) {
+        if (q.type === 'multiple' && q.options.length < 2) {
+          errors.questions = 'Multiple choice questions need at least 2 options.';
+          break;
+        }
+      }
+      return errors;
+    }
+
+    // --- Submit flow: form -> loading overlay -> share overlay ---
+    const overlay = document.getElementById('overlay');
+
+    document.getElementById('puzzleForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const clientErrors = clientValidate();
+      if (Object.keys(clientErrors).length) { showErrors(clientErrors); return; }
+      showErrors({});
+
+      overlay.classList.add('pz-overlay-visible');
+      const overlayScreens = S.createScreenContainer(overlay);
+      overlayScreens.goTo(0);
+
+      const formData = new FormData();
+      formData.append('theirName', document.getElementById('theirName').value.trim());
+      formData.append('yourName', document.getElementById('yourName').value.trim());
+      formData.append('difficulty', difficultyInput.value);
+      formData.append('hiddenMessage', hiddenMessageEl.value.trim());
+      formData.append('questionsJson', JSON.stringify(collectQuestions()));
+      formData.append('photos', puzzlePhotoFile);
+
+      try {
+        const res = await fetch('/cards/puzzle/create', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': <%- JSON.stringify(csrfToken) %> },
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          overlay.classList.remove('pz-overlay-visible');
+          showErrors(data.errors || {});
+          return;
+        }
+
+        setTimeout(() => {
+          document.getElementById('shareSubtitle').textContent = data.whatsappPreviewTitle;
+          document.getElementById('shareUrlText').textContent = data.shareUrl;
+          document.getElementById('overlayQr').src = data.qrDataUrl;
+          document.getElementById('shareRecipientName').textContent = data.recipientName;
+          document.getElementById('overlayResults').setAttribute('href', data.resultsUrl);
+          S.wireShareScreen({
+            copyBtn: document.getElementById('overlayCopy'),
+            whatsappBtn: document.getElementById('overlayWhatsapp'),
+            previewBtn: document.getElementById('overlayPreview'),
+            shareUrl: data.shareUrl,
+            whatsappText: 'Solve this to unlock your surprise 🧩🔒',
+          });
+          overlayScreens.next();
+          S.burstConfetti({ colors: ['#F28C7A', '#FFE5A0', '#BFD7EA'] });
+        }, 1400);
+      } catch (err) {
+        overlay.classList.remove('pz-overlay-visible');
+        showErrors({ theirName: 'Something went wrong sending this. Please try again.' });
+      }
+    });
+  </script>
+</body>
+</html>

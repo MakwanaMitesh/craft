@@ -29,6 +29,14 @@ router.post(
   verifyTokenAfterUpload,
   surpriseCardsController.postAnniversaryCreate
 );
+router.get('/cards/puzzle/create', surpriseCardsController.getPuzzleCreate);
+router.post(
+  '/cards/puzzle/create',
+  cardCreateLimiter,
+  dynamicPhotoUpload, // single required "photos" field — the client already cropped it to a square before upload
+  verifyTokenAfterUpload,
+  surpriseCardsController.postPuzzleCreate
+);
 
 router.get('/', maintenanceGate, publicController.getLanding);
 router.get('/demo/:templateSlug', maintenanceGate, publicController.getDemo);
