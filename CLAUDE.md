@@ -645,7 +645,79 @@ Every save on every tab calls `logAdminAction` (audit log) and redirects back to
 
 ---
 
-## 16. Known issues, TODOs, and "Not built yet"
+## 16. Interactive Surprise Cards (free, no-login)
+
+A second, deliberately separate card system, parallel to everything above. No account, no payment, no Template/Plan/Order — anyone can build and send one. It shares only the lowest-level infrastructure with the paid system (Express/Mongoose/EJS, `middleware/csrf.js`, `middleware/maintenance.js`, `utils/mediaStorage.js`, `middleware/dynamicPhotoUpload.js`). Four card types exist today: **Apology**, **Anniversary**, **Puzzle** (a sliding/swap photo puzzle hiding a message), and **Friendship**.
+
+### Model: `SurpriseCard` (`models/SurpriseCard.js`)
+
+| Field | Type | Notes |
+|---|---|---|
+| slug | String | required, unique, indexed — `generateCardSlug()` |
+| type | String enum (`utils/surpriseCardTypes.js` → `SURPRISE_CARD_TYPES`) | `'apology' \| 'anniversary' \| 'puzzle' \| 'friendship'` |
+| senderName, recipientName | String | required, max 30 |
+| fields | Mixed | everything type-specific — see below. Adding a new type never needs a schema migration, since it just starts writing new keys here |
+| photos | [String] | sharp-validated/resized like every other upload in this app |
+| openedAt | Date | set the first time the recipient opens `/c/:slug` (shared across all four types, in `viewSurpriseCard`) |
+| recipientAnswer, answeredAt | String, Date | generic "final decision" slot — Apology/Anniversary use `'yes' \| 'not_yet'`, Puzzle sets `'solved'` once solved |
+| resultsKey | String | required, random — gates the sender's private `/c/:slug/results` page; the recipient's own link never contains it |
+
+`fields` shape per type:
+- **apology**: `moodCharacter`, `sorryText`, `whyMatterText`, `finalQuestion`, `forgiveMessage`
+- **anniversary**: `togetherDate`, `anniversaryNumber`, `illustrationStyle`, `letterText`, `loveLines[]`, `timeline[]` (`{dateOrLabel, caption, photo}`)
+- **puzzle**: `difficulty`, `gridSize`, `hiddenMessage`, `questions[]` (`{text, type, options?}`), `answers` (object keyed by question index), `solveStats` (`{moves, timeSeconds, peeks}`), `liveProgress` (`{moves, timeSeconds, updatedAt}` — overwritten at most every ~5s while playing, read by the sender's live results polling)
+- **friendship**: `youAvatar`, `friendAvatar`, `friendsSinceYear`, `message`, `insideJokes[]`, `quiz[]` (`{question, options[], correctIndex}`), `quizResult` (`{score, total, completedAt}`)
+
+### Routes (`routes/publicRoutes.js`, mounted at `/`)
+
+| Method | Path | Guard | Purpose |
+|---|---|---|---|
+| GET | `/cards/style-guide` | — | Design-system demo page |
+| GET/POST | `/cards/apology/create` | POST: `cardCreateLimiter`, `dynamicPhotoUpload` (flat `photos`, ≤3), `verifyTokenAfterUpload` | Apology creation form + submit |
+| GET/POST | `/cards/anniversary/create` | POST: `cardCreateLimiter`, `dynamicPhotoUpload.any(8)` | Anniversary creation form + submit (one optional photo per timeline moment) |
+| GET/POST | `/cards/puzzle/create` | POST: `cardCreateLimiter`, `dynamicPhotoUpload` (single required photo, client-cropped to a square) | Puzzle creation form + submit |
+| GET/POST | `/cards/friendship/create` | POST: `cardCreateLimiter`, `dynamicPhotoUpload.any(8)` | Friendship creation form + submit (flat `photos`, ≤8 — `.any()` used here specifically because the default export's cap comes from Settings → Uploads → max photos per card, 6 by default, which is lower than the 8 this type promises) |
+| GET | `/c/:slug` | — | `publicController.viewCard` runs first and calls `next()` when the slug isn't a paid Card, falling through to `surpriseCardsController.viewSurpriseCard` — one URL shape serves both systems |
+| GET | `/c/:slug/results` | — | Sender-only status page, gated by `?key=` against `resultsKey` |
+| GET | `/c/:slug/results/live` | — | JSON, polled every 5s by the Puzzle results page only — live moves/time/peeks + a "recipient active right now" flag |
+| POST | `/c/:slug/answer` | `openedLimiter` | Apology/Anniversary's Yes/Not-yet answer |
+| POST | `/c/:slug/solve` | `openedLimiter` | Puzzle: records final solve stats, once |
+| POST | `/c/:slug/answer-question` | `openedLimiter` | Puzzle: saves one post-solve question's answer |
+| POST | `/c/:slug/progress` | `trackLimiter` | Puzzle: live progress beacon, at most once every ~5s (4s floor enforced server-side too) |
+| POST | `/c/:slug/quiz-score` | `openedLimiter` | Friendship: saves the final quiz score |
+
+### Controller: `controllers/surpriseCardsController.js`
+
+One file for the whole system. `viewSurpriseCard` is the shared dispatcher (looked up by `type`, records `openedAt` once, renders the right `*-recipient` view); every other exported function is either a `get*Create`/`post*Create` pair (one per type) or a small single-purpose save endpoint (`answerSurpriseCard`, `solvePuzzleCard`, `answerPuzzleQuestion`, `recordPuzzleProgress`, `getPuzzleLiveStatus`, `saveFriendshipQuizScore`, `getSurpriseCardResults`).
+
+### Views
+
+- `views/public/style-guide.ejs` — the shared design system's own demo page.
+- `views/public/{apology,anniversary,puzzle,friendship}-create.ejs` — one creation form per type, each with its own live preview and a loading→share overlay.
+- `views/public/{apology,anniversary,puzzle,friendship}-recipient.ejs` — the actual multi-screen recipient experience per type.
+- `views/public/surprise-card-results.ejs` — generic sender-only status page, shared by all four types; branches on `card.type` for the puzzle's live-polling behavior (every other type gets a plain 30s auto-reload).
+- `views/partials/mood-character-svg.ejs`, `couple-illustration-svg.ejs`, `friend-avatar-svg.ejs` — original, hand-authored SVG illustrations/avatars specific to Apology, Anniversary, and Friendship respectively.
+
+### Shared design system
+
+- `public/css/cards.css` — hand-authored stylesheet (not run through the Tailwind build), CSS custom properties for colors/durations, loaded directly via `<link>` on every surprise-card page. Includes a blanket `overflow-wrap`/`word-break` rule scoped to `.sc-screen-container *` so a single long unbroken word (any script) never overflows a narrow screen.
+- `public/js/cardComponents.js` — `window.SurpriseCard`, exposing 10 small vanilla-JS components: `createScreenContainer`, `wireTapToContinue`, `startFloatingHearts`, `startFloatingBokeh`, `startFloatingEmojis`, `burstConfetti`, `createEnvelopeLetter` (now has a `reset()` method so a "watch again"-style replay can reopen it), `createPhotoPolaroids`, `createSoundToggle`, `wireShareScreen`. Every animated component no-ops (or drops to zero) under `prefers-reduced-motion`; `startFloatingEmojis` additionally enforces a hard `maxConcurrent` ceiling (default 15) independent of its spawn interval, so a throttled/backgrounded tab's timers can't burst-spawn past it once the tab is visible again.
+
+### What's tracked (and what isn't)
+
+This system does **not** use `CardView`/`CardEvent` (those are the paid system's analytics tables) and has no admin-visible analytics at all. Every signal lives directly on the `SurpriseCard` document itself: `openedAt`, `recipientAnswer`/`answeredAt`, and the type-specific `fields.solveStats` / `fields.liveProgress` / `fields.quizResult` / `fields.answers` described above. The only place any of this is ever displayed back is the sender's own `/c/:slug/results` page.
+
+### Settings and admin
+
+**No Settings tab, feature toggle, or admin page exists for this system at all.** It doesn't read `Setting.getSingleton()` for anything except indirectly through the shared `dynamicPhotoUpload` middleware (photo size/type limits only), and `maintenanceMode` still blocks it like every other public route. There is currently no way to disable a card type, no admin list/search/delete for `SurpriseCard` documents, and no site-wide view count or funnel for this system — the only way to inspect or remove one today is a direct database query.
+
+### Homepage and navigation
+
+`views/partials/navbar.ejs` has a "Cards" link to `/#surprise-cards`; `views/public/landing.ejs` has a horizontally-scrollable "Surprise Cards" teaser section with live mini-previews. That section currently only features **Birthday and Apology** — it predates Anniversary, Puzzle, and Friendship and hasn't been extended to include them (see §17).
+
+---
+
+## 17. Known issues, TODOs, and "Not built yet"
 
 **Not built yet:**
 - No automated test suite (unit or integration) exists anywhere in the repo.
@@ -655,6 +727,10 @@ Every save on every tab calls `logAdminAction` (audit log) and redirects back to
 - No way to edit a card's content after it's paid (by design — see the FAQ in `config/landingContent.js`: "reach out to support").
 - No public API docs, SDK, or webhook-out system for customers.
 - Legal pages (Terms/Privacy/Refund) ship with clearly-labeled **placeholder** text until an admin fills in real copy via Settings → Legal pages.
+- **Interactive Surprise Cards (§16) has no admin surface at all** — no list/search/detail/delete for `SurpriseCard` documents, no way to disable a card type or the system as a whole, no analytics. Everything is reachable only directly in the database.
+- The homepage's "Surprise Cards" teaser row (§16) still only shows Birthday and Apology — Anniversary, Puzzle, and Friendship aren't featured there yet.
+- Puzzle's drag-and-drop tile swap is a desktop-mouse convenience only — native HTML5 drag-and-drop generally doesn't fire on touch-only mobile browsers. Tap-to-swap (the primary interaction) works fully on mobile and is sufficient on its own to solve the puzzle.
+- Friendship's "Save badge" PNG download has never been verified on a real Android or iPhone device (no browser/device available in this development environment) — it degrades to `canvas.toDataURL()` when `toBlob` is unavailable and shows an inline error if the badge image fails to decode, but the real-device download UX itself (e.g. iOS Safari's handling of a programmatic `<a download>` click) is unconfirmed.
 
 **Known rough edges:**
 - `middleware/upload.js` (admin thumbnails/logos) still has fixed 5MB/jpg,png,webp limits, independent of the Settings → Uploads tab, which only governs the *customer* wizard's photo uploads.
@@ -662,7 +738,7 @@ Every save on every tab calls `logAdminAction` (audit log) and redirects back to
 
 ---
 
-## 17. Changelog
+## 18. Changelog
 
 A short, dated history of major features as they were added (dates reflect when each feature was built in this project's development, not calendar reality for every reader):
 
@@ -674,3 +750,4 @@ A short, dated history of major features as they were added (dates reflect when 
 - **Customer analytics**: Per-card analytics page (`/dashboard/cards/:id/stats`), the `Notification` model + dashboard bell icon, per-user email-notification preferences, plan-gated (`basic`/`full`) analytics detail.
 - **Admin Settings overhaul**: The 9-tab Settings system described in §10 — Setting model restructure, in-memory caching, AES-256-GCM secret encryption, live feature toggles, admin-editable homepage content/SEO/legal pages, dynamic upload limits, SMTP-from-Settings, test-email button.
 - **This file**: `CLAUDE.md` created to document the project as of all the above.
+- **2026-11-12 — Interactive Surprise Cards**: a second, free, no-login card system added alongside the paid one described in §1–§15, covered in full in §16. `SurpriseCard` model, the shared design system (`public/css/cards.css` + `public/js/cardComponents.js`), and four complete card types end to end (creation form → multi-screen recipient experience → sender results page): **Apology** (mood character, final yes/no question with a runaway "not yet" cycle); **Anniversary** (countdown with leap-year handling, timeline, "things I love about you", a typed letter, a live years/months/days counter); **Puzzle** (an N×N tap-to-swap/drag-and-drop photo puzzle with a client-side crop tool, a move/timer HUD, post-solve questions, and live sender-side progress tracking over polling); **Friendship** (six original avatar illustrations, an optional quiz, a photo-and-inside-jokes scrapbook, a typed letter, and a downloadable PNG badge). Also added: the homepage's "Surprise Cards" teaser section and the navbar's "Cards" link (Birthday + Apology only so far — see §17).
