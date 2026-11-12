@@ -59,6 +59,7 @@ router.get('/c/:slug/results', maintenanceGate, surpriseCardsController.getSurpr
 router.post('/c/:slug/opened', maintenanceGate, openedLimiter, publicController.markOpened);
 router.post('/c/:slug/answer', maintenanceGate, openedLimiter, surpriseCardsController.answerSurpriseCard);
 router.post('/c/:slug/solve', maintenanceGate, openedLimiter, surpriseCardsController.solvePuzzleCard);
+router.post('/c/:slug/answer-question', maintenanceGate, openedLimiter, surpriseCardsController.answerPuzzleQuestion);
 router.post('/api/cards/:slug/respond', maintenanceGate, openedLimiter, publicController.respondToProposal);
 router.post('/api/track', maintenanceGate, trackLimiter, trackingController.track);
 

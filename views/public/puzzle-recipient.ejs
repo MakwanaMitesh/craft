@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&family=Caveat:wght@500;600&display=swap"
     rel="stylesheet"
   />
   <link rel="stylesheet" href="/css/cards.css" />
@@ -120,9 +120,53 @@
     .pzr-solved-text { text-align: center; }
     .pzr-solved-text h2 { margin-bottom: 0.25rem; }
 
-    /* ===== Screen 3: Unlocked ===== */
+    /* ===== Screen 3: The Surprise ===== */
     .pzr-reveal-card { max-width: 420px; text-align: center; }
-    .pzr-reveal-message { font-family: var(--font-body); font-size: 17px; line-height: 1.6; margin: 1rem 0; white-space: pre-wrap; }
+    .pzr-polaroid {
+      background: #fff; padding: 10px 10px 18px; border-radius: 10px;
+      box-shadow: var(--shadow-soft); display: inline-block; transform: rotate(-1.5deg); margin-bottom: 1.25rem;
+    }
+    .pzr-polaroid img { width: 220px; height: 220px; object-fit: cover; border-radius: 6px; display: block; }
+    .pzr-reveal-message {
+      font-family: var(--font-hand); font-size: clamp(24px, 6vw, 32px); line-height: 1.4;
+      margin: 0.5rem 0; white-space: pre-wrap; min-height: 1.4em;
+    }
+    .pzr-reveal-signature {
+      font-family: var(--font-hand); font-size: 22px; opacity: 0; margin-top: 0.75rem;
+      transition: opacity 500ms var(--ease-soft);
+    }
+    .pzr-reveal-signature.pzr-visible { opacity: 0.85; }
+    .pzr-letter-caret {
+      display: inline-block; width: 2px; height: 1em; background: var(--cocoa);
+      margin-left: 1px; vertical-align: middle; animation: pzr-caret-blink 0.9s steps(1) infinite;
+    }
+    @keyframes pzr-caret-blink { 50% { opacity: 0; } }
+    .pzr-next-row { margin-top: 1.25rem; }
+
+    /* ===== Screen 4: Questions ===== */
+    .pzr-q-progress {
+      font-family: var(--font-body); font-size: 13px; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; opacity: 0.6; margin-bottom: 0.75rem;
+    }
+    .pzr-q-text { font-family: var(--font-heading); font-size: clamp(22px, 5.5vw, 28px); max-width: 420px; margin-bottom: 1.5rem; }
+    .pzr-q-yesno { display: flex; gap: 1rem; }
+    .pzr-q-yesno button { min-width: 110px; padding: 1rem 1.5rem; font-size: 17px; }
+    .pzr-q-options { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 360px; }
+    .pzr-q-option-card {
+      font-family: var(--font-body); font-size: 16px; font-weight: 500; text-align: center;
+      padding: 1rem; border-radius: 14px; border: 1.5px solid rgba(74,59,54,0.18);
+      background: var(--white-soft); cursor: pointer; transition: all 200ms var(--ease-soft);
+    }
+    .pzr-q-option-card:active { transform: scale(0.97); background: var(--sky, #BFD7EA); }
+    .pzr-q-short { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 360px; }
+    .pzr-q-short textarea {
+      width: 100%; font-family: var(--font-body); font-size: 16px; padding: 0.9rem 1rem;
+      border-radius: 14px; border: 1.5px solid rgba(74,59,54,0.18); background: var(--white-soft);
+      color: var(--cocoa); box-sizing: border-box; resize: none; min-height: 90px;
+    }
+    .pzr-q-short-count { font-size: 12px; opacity: 0.55; text-align: right; }
+    .pzr-q-sent { text-align: center; }
+    .pzr-final-buttons { display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; justify-content: center; }
   </style>
 </head>
 <body class="sc-root theme-puzzle">
@@ -159,14 +203,47 @@
       </div>
     </div>
 
-    <!-- SCREEN 3: Unlocked -->
-    <div class="sc-screen" id="screen-unlocked">
-      <div class="sc-card sc-paper pzr-reveal-card">
-        <div class="pzr-lock-wrap pzr-unlocked" style="font-size: 2.5rem;">🔓</div>
-        <h2 style="margin-top: 0.5rem;">From <%= card.senderName %></h2>
-        <p class="pzr-reveal-message"><%= card.fields.hiddenMessage %></p>
+    <!-- SCREEN 3: The Surprise -->
+    <div class="sc-screen" id="screen-surprise">
+      <div class="pzr-reveal-card">
+        <div class="pzr-polaroid">
+          <img src="<%= photoUrl %>" alt="" />
+        </div>
+        <p class="pzr-reveal-message" id="revealMessage"></p>
+        <p class="pzr-reveal-signature" id="revealSignature">- <%= card.senderName %></p>
+
+        <div class="pzr-next-row">
+          <% if (card.fields.questions && card.fields.questions.length) { %>
+            <button type="button" class="sc-btn" id="questionsNextBtn" style="display: none;">Next →</button>
+          <% } else { %>
+            <div class="pzr-final-buttons" id="finalButtons" style="display: none;">
+              <button type="button" class="sc-btn" id="playAgainBtn1">Play again 🔁</button>
+              <a href="/cards/puzzle/create" class="sc-btn sc-btn-outline">Make your own puzzle ✨</a>
+            </div>
+          <% } %>
+        </div>
       </div>
     </div>
+
+    <!-- SCREEN 4: Questions (only rendered when the sender added at least one) -->
+    <% if (card.fields.questions && card.fields.questions.length) { %>
+      <div class="sc-screen" id="screen-questions">
+        <div id="questionArea" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+          <p class="pzr-q-progress" id="qProgress"></p>
+          <p class="pzr-q-text" id="qText"></p>
+          <div id="qAnswerArea" style="width: 100%; display: flex; justify-content: center;"></div>
+        </div>
+
+        <div id="qSentArea" class="pzr-q-sent" style="display: none;">
+          <div class="pzr-hearts-layer" id="qHeartsLayer" style="position: relative; width: 200px; height: 80px; margin: 0 auto;"></div>
+          <h2>Your answers have been sent 💌</h2>
+          <div class="pzr-final-buttons">
+            <button type="button" class="sc-btn" id="playAgainBtn2">Play again 🔁</button>
+            <a href="/cards/puzzle/create" class="sc-btn sc-btn-outline">Make your own puzzle ✨</a>
+          </div>
+        </div>
+      </div>
+    <% } %>
 
   </div>
 
@@ -424,6 +501,7 @@
 
     document.getElementById('unlockBtn').addEventListener('click', () => {
       screens.next();
+      startSurpriseScreen();
     });
 
     let pausableTimer = null;
@@ -436,6 +514,170 @@
         updateStatsLine();
       }, 1000);
     }
+
+    // --- SCREEN 3: The Surprise ---
+    const QUESTIONS = <%- JSON.stringify(card.fields.questions || []) %>;
+    const HIDDEN_MESSAGE = <%- JSON.stringify(card.fields.hiddenMessage) %>;
+    const revealMessageEl = document.getElementById('revealMessage');
+    const revealSignatureEl = document.getElementById('revealSignature');
+    let surpriseStarted = false;
+
+    function typeMessage(text, el, onDone) {
+      el.textContent = '';
+      const caret = document.createElement('span');
+      caret.className = 'pzr-letter-caret';
+      el.after(caret);
+
+      if (prefersReducedMotion) {
+        el.textContent = text;
+        caret.remove();
+        if (onDone) onDone();
+        return;
+      }
+
+      let i = 0;
+      const timer = setInterval(() => {
+        i += 1;
+        el.textContent = text.slice(0, i);
+        if (i >= text.length) {
+          clearInterval(timer);
+          caret.remove();
+          if (onDone) onDone();
+        }
+      }, 32);
+    }
+
+    function startSurpriseScreen() {
+      if (surpriseStarted) return;
+      surpriseStarted = true;
+      typeMessage(HIDDEN_MESSAGE, revealMessageEl, () => {
+        revealSignatureEl.classList.add('pzr-visible');
+        setTimeout(() => {
+          if (QUESTIONS.length) {
+            document.getElementById('questionsNextBtn').style.display = '';
+          } else {
+            document.getElementById('finalButtons').style.display = '';
+          }
+        }, 500);
+      });
+    }
+
+    // --- SCREEN 4: Questions (one at a time, skipped entirely if none) ---
+    let resetQuestionsFlow = () => {};
+    if (QUESTIONS.length) {
+      const questionsNextBtn = document.getElementById('questionsNextBtn');
+      const questionArea = document.getElementById('questionArea');
+      const qSentArea = document.getElementById('qSentArea');
+      const qProgress = document.getElementById('qProgress');
+      const qText = document.getElementById('qText');
+      const qAnswerArea = document.getElementById('qAnswerArea');
+      let qIndex = 0;
+
+      function saveAnswer(index, answer) {
+        fetch(`/c/${SLUG}/answer-question`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ questionIndex: index, answer, _csrf: CSRF_TOKEN }),
+          keepalive: true,
+        }).catch(() => {});
+      }
+
+      function renderQuestion() {
+        const q = QUESTIONS[qIndex];
+        qProgress.textContent = `${qIndex + 1} of ${QUESTIONS.length}`;
+        qText.textContent = q.text;
+        qAnswerArea.innerHTML = '';
+
+        if (q.type === 'yesno') {
+          const wrap = document.createElement('div');
+          wrap.className = 'pzr-q-yesno';
+          ['Yes', 'No'].forEach((label) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sc-btn';
+            btn.textContent = label;
+            btn.addEventListener('click', () => submitAnswer(label.toLowerCase()));
+            wrap.appendChild(btn);
+          });
+          qAnswerArea.appendChild(wrap);
+        } else if (q.type === 'multiple') {
+          const wrap = document.createElement('div');
+          wrap.className = 'pzr-q-options';
+          (q.options || []).forEach((option) => {
+            const card = document.createElement('div');
+            card.className = 'pzr-q-option-card';
+            card.textContent = option;
+            card.addEventListener('click', () => submitAnswer(option));
+            wrap.appendChild(card);
+          });
+          qAnswerArea.appendChild(wrap);
+        } else {
+          const wrap = document.createElement('div');
+          wrap.className = 'pzr-q-short';
+          const textarea = document.createElement('textarea');
+          textarea.maxLength = 200;
+          textarea.placeholder = 'Type your answer...';
+          const count = document.createElement('p');
+          count.className = 'pzr-q-short-count';
+          count.textContent = '0 / 200';
+          textarea.addEventListener('input', () => { count.textContent = `${textarea.value.length} / 200`; });
+          const sendBtn = document.createElement('button');
+          sendBtn.type = 'button';
+          sendBtn.className = 'sc-btn';
+          sendBtn.textContent = 'Send';
+          sendBtn.addEventListener('click', () => {
+            const value = textarea.value.trim();
+            if (!value) return;
+            submitAnswer(value);
+          });
+          wrap.appendChild(textarea);
+          wrap.appendChild(count);
+          wrap.appendChild(sendBtn);
+          qAnswerArea.appendChild(wrap);
+        }
+      }
+
+      function submitAnswer(answer) {
+        saveAnswer(qIndex, answer);
+        qIndex += 1;
+        if (qIndex >= QUESTIONS.length) {
+          questionArea.style.display = 'none';
+          qSentArea.style.display = 'block';
+          S.startFloatingHearts(document.getElementById('qHeartsLayer'), { color: '#F28C7A', count: 8 });
+        } else {
+          renderQuestion();
+        }
+      }
+
+      questionsNextBtn.addEventListener('click', () => {
+        screens.next();
+        renderQuestion();
+      });
+
+      resetQuestionsFlow = () => {
+        qIndex = 0;
+        questionArea.style.display = '';
+        qSentArea.style.display = 'none';
+        questionsNextBtn.style.display = 'none';
+      };
+    }
+
+    // --- Final buttons: replay the puzzle from scratch ---
+    const puzzleScreenIndex = screens.screens.indexOf(document.getElementById('screen-puzzle'));
+    const finalButtonsEl = document.getElementById('finalButtons');
+    function playAgain() {
+      surpriseStarted = false;
+      revealMessageEl.textContent = '';
+      revealSignatureEl.classList.remove('pzr-visible');
+      if (finalButtonsEl) finalButtonsEl.style.display = 'none';
+      resetQuestionsFlow();
+      screens.goTo(puzzleScreenIndex);
+      startPuzzle();
+    }
+    const playAgainBtn1 = document.getElementById('playAgainBtn1');
+    if (playAgainBtn1) playAgainBtn1.addEventListener('click', playAgain);
+    const playAgainBtn2 = document.getElementById('playAgainBtn2');
+    if (playAgainBtn2) playAgainBtn2.addEventListener('click', playAgain);
   </script>
 </body>
 </html>

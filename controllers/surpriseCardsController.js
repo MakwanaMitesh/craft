@@ -495,6 +495,38 @@ exports.solvePuzzleCard = catchAsync(async (req, res) => {
   res.json({ success: true });
 });
 
+// Saves one post-solve question's answer, the moment it's answered (not
+// batched at the end) — stored keyed by its index so re-answering (e.g. a
+// refresh mid-flow) overwrites that one answer instead of appending a
+// duplicate. A read-then-validate step is needed here (unlike the simpler
+// atomic updates elsewhere in this file) because what counts as a valid
+// answer depends on that specific question's type/options, which only
+// exist on this card's own `fields.questions`.
+exports.answerPuzzleQuestion = catchAsync(async (req, res) => {
+  const card = await SurpriseCard.findOne({ slug: req.params.slug, type: 'puzzle' });
+  if (!card) return res.status(404).json({ success: false });
+
+  const index = Number(req.body?.questionIndex);
+  const question = Number.isInteger(index) ? card.fields.questions?.[index] : null;
+  if (!question) return res.status(400).json({ success: false });
+
+  const rawAnswer = typeof req.body?.answer === 'string' ? req.body.answer.trim() : '';
+  if (question.type === 'yesno') {
+    if (!['yes', 'no'].includes(rawAnswer)) return res.status(400).json({ success: false });
+  } else if (question.type === 'multiple') {
+    if (!question.options.includes(rawAnswer)) return res.status(400).json({ success: false });
+  } else {
+    if (!rawAnswer || rawAnswer.length > 200) return res.status(400).json({ success: false });
+  }
+
+  await SurpriseCard.updateOne(
+    { slug: req.params.slug },
+    { $set: { [`fields.answers.${index}`]: { text: question.text, answer: rawAnswer, answeredAt: new Date() } } }
+  );
+
+  res.json({ success: true });
+});
+
 // Private, sender-only status page — gated by a secret `key` query param
 // (card.resultsKey), never the public slug alone. Wrong/missing key gets
 // the exact same 404 as a nonexistent card, so a guess can't distinguish
