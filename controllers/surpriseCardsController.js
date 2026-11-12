@@ -603,6 +603,151 @@ exports.getPuzzleLiveStatus = catchAsync(async (req, res) => {
   });
 });
 
+// --- Friendship ---
+const AVATAR_STYLES = ['short', 'curly', 'bun', 'afro', 'buzz', 'long'];
+const MAX_FRIENDSHIP_PHOTOS = 8;
+const MAX_QUIZ_QUESTIONS = 5;
+const MAX_INSIDE_JOKES = 5;
+const MAX_INSIDE_JOKE_LENGTH = 100;
+
+exports.getFriendshipCreate = (req, res) => {
+  res.render('public/friendship-create', {
+    title: 'Celebrate your bestie 🫂',
+    avatarStyles: AVATAR_STYLES,
+    maxPhotos: MAX_FRIENDSHIP_PHOTOS,
+    maxQuizQuestions: MAX_QUIZ_QUESTIONS,
+    maxInsideJokes: MAX_INSIDE_JOKES,
+  });
+};
+
+// Same "one JSON field" reasoning as the Puzzle's post-solve questions —
+// each quiz question carries 2-4 options plus which one is correct, which
+// doesn't map cleanly onto flat parallel-array form fields.
+function validateFriendshipQuiz(raw) {
+  if (!raw) return { quiz: [] };
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { error: 'The friendship quiz could not be read.' };
+  }
+  if (!Array.isArray(parsed)) return { error: 'The friendship quiz could not be read.' };
+
+  const quiz = [];
+  for (const item of parsed.slice(0, MAX_QUIZ_QUESTIONS)) {
+    const question = typeof item?.question === 'string' ? item.question.trim() : '';
+    if (!question) continue; // an unfilled quiz row is skipped, same as Anniversary's blank timeline rows
+    if (question.length > 150) return { error: 'Keep each quiz question under 150 characters.' };
+
+    const options = Array.isArray(item?.options)
+      ? item.options.map((o) => (typeof o === 'string' ? o.trim() : '')).filter(Boolean).slice(0, 4)
+      : [];
+    if (options.length < 2) return { error: 'Each quiz question needs at least 2 options.' };
+    if (options.some((o) => o.length > 50)) return { error: 'Keep each quiz option under 50 characters.' };
+
+    const correctIndex = Number(item?.correctIndex);
+    if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= options.length) {
+      return { error: 'Mark which option is correct for each quiz question.' };
+    }
+
+    quiz.push({ question, options, correctIndex });
+  }
+  return { quiz };
+}
+
+function validateFriendshipInput(body) {
+  const errors = {};
+  const clean = (v) => (typeof v === 'string' ? v.trim() : '');
+
+  const yourName = clean(body.yourName);
+  if (!yourName) errors.yourName = 'Your name is required.';
+  else if (yourName.length > 30) errors.yourName = 'Keep your name under 30 characters.';
+
+  const friendName = clean(body.friendName);
+  if (!friendName) errors.friendName = "Your friend's name is required.";
+  else if (friendName.length > 30) errors.friendName = "Keep your friend's name under 30 characters.";
+
+  const youAvatar = clean(body.youAvatar);
+  if (!AVATAR_STYLES.includes(youAvatar)) errors.youAvatar = 'Pick an avatar for you.';
+
+  const friendAvatar = clean(body.friendAvatar);
+  if (!AVATAR_STYLES.includes(friendAvatar)) errors.friendAvatar = 'Pick an avatar for your friend.';
+
+  let friendsSinceYear = null;
+  const rawYear = clean(body.friendsSinceYear);
+  if (rawYear) {
+    const year = Number(rawYear);
+    const currentYear = new Date().getFullYear();
+    if (!Number.isInteger(year) || year < 1900 || year > currentYear) {
+      errors.friendsSinceYear = `Enter a year between 1900 and ${currentYear}.`;
+    } else {
+      friendsSinceYear = year;
+    }
+  }
+
+  const message = clean(body.message);
+  if (!message) errors.message = 'Write your message.';
+  else if (message.length > 1000) errors.message = 'Keep this under 1000 characters.';
+
+  // Inside jokes — up to 5, blanks dropped, each quietly capped (same
+  // non-hard-error treatment as Anniversary's "things I love about you" lines).
+  const rawJokes = Array.isArray(body.insideJokes) ? body.insideJokes : body.insideJokes ? [body.insideJokes] : [];
+  const insideJokes = rawJokes.map(clean).filter(Boolean).slice(0, MAX_INSIDE_JOKES).map((j) => j.slice(0, MAX_INSIDE_JOKE_LENGTH));
+
+  const { quiz, error: quizError } = validateFriendshipQuiz(body.quizJson);
+  if (quizError) errors.quiz = quizError;
+
+  return {
+    errors,
+    values: { yourName, friendName, youAvatar, friendAvatar, friendsSinceYear, message, insideJokes, quiz: quiz || [] },
+  };
+}
+
+exports.postFriendshipCreate = catchAsync(async (req, res) => {
+  const { errors, values } = validateFriendshipInput(req.body);
+
+  const files = req.files || [];
+  if (files.length > MAX_FRIENDSHIP_PHOTOS) {
+    errors.photos = `Up to ${MAX_FRIENDSHIP_PHOTOS} photos only.`;
+  }
+
+  if (Object.keys(errors).length) {
+    return res.status(422).json({ success: false, errors });
+  }
+
+  const photos = files.length ? await storeImages(files) : [];
+
+  const card = await SurpriseCard.create({
+    slug: generateCardSlug(),
+    type: 'friendship',
+    senderName: values.yourName,
+    recipientName: values.friendName,
+    fields: {
+      youAvatar: values.youAvatar,
+      friendAvatar: values.friendAvatar,
+      friendsSinceYear: values.friendsSinceYear,
+      message: values.message,
+      insideJokes: values.insideJokes,
+      quiz: values.quiz,
+    },
+    photos,
+  });
+
+  const shareUrl = `${process.env.BASE_URL}/c/${card.slug}`;
+  const resultsUrl = `${process.env.BASE_URL}/c/${card.slug}/results?key=${card.resultsKey}`;
+  const qrDataUrl = await QRCode.toDataURL(shareUrl, { width: 320, margin: 2 });
+
+  res.json({
+    success: true,
+    shareUrl,
+    resultsUrl,
+    qrDataUrl,
+    recipientName: card.recipientName,
+    whatsappMessage: `Bestie! I made something for you 🎁🫂 ${shareUrl}`,
+    whatsappPreviewTitle: `For my best friend, ${card.recipientName} 💛`,
+  });
+});
+
 // Private, sender-only status page — gated by a secret `key` query param
 // (card.resultsKey), never the public slug alone. Wrong/missing key gets
 // the exact same 404 as a nonexistent card, so a guess can't distinguish

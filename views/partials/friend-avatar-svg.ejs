@@ -1,0 +1,50 @@
+<%
+// Six original, gender-neutral bust avatars for the Friendship card — one
+// consistent face/shoulders shape, varied only by hairstyle and skin tone
+// so no option reads as more "masculine" or "feminine" than another.
+// `style` is one of 'short' | 'curly' | 'bun' | 'afro' | 'buzz' | 'long'.
+const avatarPalette = {
+  short: { skin: '#F3D2B3', hair: '#3A2A22', shirt: '#F4A261' },
+  curly: { skin: '#D9A066', hair: '#5C3A21', shirt: '#8ECAE6' },
+  bun:   { skin: '#8D5A3B', hair: '#2B1B12', shirt: '#F7A8C4' },
+  afro:  { skin: '#B97A4B', hair: '#241A14', shirt: '#FFD166' },
+  buzz:  { skin: '#FFE0C2', hair: '#8A6A52', shirt: '#F4A261' },
+  long:  { skin: '#6B4226', hair: '#0F0C0A', shirt: '#8ECAE6' },
+};
+const p = avatarPalette[style] || avatarPalette.short;
+%>
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- shoulders/body, shared across all six -->
+  <path d="M18 98 C18 76 32 66 50 66 C68 66 82 76 82 98Z" fill="<%= p.shirt %>"/>
+  <!-- face, shared across all six -->
+  <circle cx="50" cy="42" r="22" fill="<%= p.skin %>"/>
+  <!-- simple smile + eyes, shared across all six -->
+  <circle cx="41" cy="40" r="2.2" fill="#2B1B12" opacity="0.75"/>
+  <circle cx="59" cy="40" r="2.2" fill="#2B1B12" opacity="0.75"/>
+  <path d="M42 50 C46 54 54 54 58 50" stroke="#2B1B12" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+
+  <% if (style === 'short') { %>
+    <path d="M27 36 C25 18 34 9 50 9 C66 9 75 18 73 36 C70 28 63 23 50 23 C37 23 30 28 27 36Z" fill="<%= p.hair %>"/>
+  <% } else if (style === 'curly') { %>
+    <circle cx="29" cy="28" r="9" fill="<%= p.hair %>"/>
+    <circle cx="40" cy="18" r="10" fill="<%= p.hair %>"/>
+    <circle cx="55" cy="15" r="10.5" fill="<%= p.hair %>"/>
+    <circle cx="68" cy="20" r="9.5" fill="<%= p.hair %>"/>
+    <circle cx="74" cy="32" r="8.5" fill="<%= p.hair %>"/>
+  <% } else if (style === 'bun') { %>
+    <path d="M27 34 C26 17 35 8 50 8 C65 8 74 17 73 34 C70 25 62 20 50 20 C38 20 30 25 27 34Z" fill="<%= p.hair %>"/>
+    <circle cx="50" cy="6" r="7" fill="<%= p.hair %>"/>
+  <% } else if (style === 'afro') { %>
+    <circle cx="50" cy="28" r="28" fill="<%= p.hair %>"/>
+    <circle cx="50" cy="42" r="21" fill="<%= p.skin %>"/>
+    <circle cx="41" cy="40" r="2.2" fill="#2B1B12" opacity="0.75"/>
+    <circle cx="59" cy="40" r="2.2" fill="#2B1B12" opacity="0.75"/>
+    <path d="M42 50 C46 54 54 54 58 50" stroke="#2B1B12" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <% } else if (style === 'buzz') { %>
+    <path d="M29 30 C31 16 39 11 50 11 C61 11 69 16 71 30" stroke="<%= p.hair %>" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <% } else { %>
+    <!-- long -->
+    <path d="M26 70 C22 50 24 24 50 20 C76 24 78 50 74 70 L68 70 C70 50 66 30 50 28 C34 30 30 50 32 70Z" fill="<%= p.hair %>"/>
+    <path d="M27 34 C26 18 35 9 50 9 C65 9 74 18 73 34 C70 26 62 21 50 21 C38 21 30 26 27 34Z" fill="<%= p.hair %>"/>
+  <% } %>
+</svg>

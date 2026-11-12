@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&family=Caveat:wght@500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    /* --- Friendship theme override: everything else is inherited from cards.css --- */
+    .theme-friendship {
+      --rose: #F4A261;  /* tangerine — .sc-btn's background on this card only */
+      --gold: #FFD166;  /* sunshine yellow — .sc-btn-gold on this card only */
+      --teal: #8ECAE6;  /* soft teal — decorative accent, local to this card */
+      --pink: #F7A8C4;  /* decorative accent, local to this card */
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      position: relative;
+      overflow-x: hidden;
+    }
+    /* Soft colorful blobs in the corners, purely decorative. */
+    .theme-friendship::before, .theme-friendship::after,
+    .fs-blob-tr, .fs-blob-bl {
+      content: ''; position: fixed; border-radius: 50%; filter: blur(2px);
+      opacity: 0.35; pointer-events: none; z-index: 0;
+    }
+    .theme-friendship::before { top: -80px; left: -80px; width: 260px; height: 260px; background: var(--teal); }
+    .theme-friendship::after { bottom: -100px; right: -60px; width: 320px; height: 320px; background: var(--pink); }
+    .fs-blob-tr { top: -60px; right: -100px; width: 220px; height: 220px; background: var(--gold); }
+    .fs-blob-bl { bottom: -80px; left: -90px; width: 240px; height: 240px; background: var(--rose); opacity: 0.25; }
+
+    /* "bouncy tap" called for specifically on this card's buttons. */
+    .theme-friendship .sc-btn:active { animation: fs-bounce 340ms var(--ease-soft); }
+    @keyframes fs-bounce {
+      0% { transform: scale(1); }
+      30% { transform: scale(0.88) rotate(-2deg); }
+      60% { transform: scale(1.1) rotate(1deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .theme-friendship .sc-btn:active { animation: none; }
+    }
+
+    .fs-wrap { max-width: 1040px; margin: 0 auto; padding: 3rem 1.5rem 5rem; position: relative; z-index: 1; }
+    .fs-hero { text-align: center; max-width: 560px; margin: 0 auto 2.5rem; }
+    .fs-hero p { opacity: 0.8; margin-top: 0.75rem; }
+    .fs-hero h1 { position: relative; }
+    .fs-hero-deco { font-size: 1.4rem; opacity: 0.8; }
+
+    .fs-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+    @media (min-width: 900px) {
+      .fs-grid { grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+      .fs-preview-col { position: sticky; top: 2rem; }
+    }
+
+    .fs-field { margin-bottom: 1.5rem; }
+    .fs-label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 15px; }
+    .fs-hint { font-size: 13px; opacity: 0.65; margin-top: 0.3rem; }
+    .fs-error { font-size: 13px; color: #B3404A; margin-top: 0.3rem; display: none; }
+    .fs-error.fs-show { display: block; }
+    .fs-input, .fs-textarea {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 16px;
+      padding: 0.8rem 1rem;
+      border-radius: 14px;
+      border: 1.5px solid rgba(74,59,54,0.15);
+      background: var(--white-soft);
+      color: var(--cocoa);
+      box-sizing: border-box;
+      transition: border-color 200ms var(--ease-soft);
+    }
+    .fs-input:focus, .fs-textarea:focus { outline: none; border-color: var(--rose); }
+    .fs-textarea { resize: vertical; min-height: 110px; }
+    .fs-count { font-size: 12px; opacity: 0.55; text-align: right; margin-top: 0.25rem; }
+
+    /* --- Avatar pickers --- */
+    .fs-avatar-group { margin-bottom: 1rem; }
+    .fs-avatar-group-label { font-weight: 600; font-size: 14px; margin-bottom: 0.5rem; opacity: 0.8; }
+    .fs-avatars { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .fs-avatar-option { cursor: pointer; }
+    .fs-avatar-option input { position: absolute; opacity: 0; pointer-events: none; }
+    .fs-avatar-card {
+      width: 64px; height: 64px; padding: 0.3rem; border-radius: 50%; border: 2.5px solid transparent;
+      background: var(--white-soft); box-shadow: var(--shadow-soft);
+      transition: border-color 200ms var(--ease-soft), transform 200ms var(--ease-soft);
+    }
+    .fs-avatar-option input:checked + .fs-avatar-card { border-color: var(--rose); transform: translateY(-3px) scale(1.05); }
+    .fs-avatar-card svg { width: 100%; height: 100%; }
+
+    /* --- Photos (up to 8) --- */
+    .fs-photo-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .fs-photo-slot {
+      width: 72px; height: 72px; border-radius: 14px;
+      border: 1.5px dashed rgba(74,59,54,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: var(--rose); cursor: pointer; position: relative; overflow: hidden;
+      background: var(--white-soft);
+    }
+    .fs-photo-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .fs-photo-slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+    /* --- Friendship quiz (up to 5) --- */
+    .fs-quiz-row {
+      background: var(--white-soft); border-radius: 14px; box-shadow: var(--shadow-soft);
+      padding: 1rem; margin-bottom: 0.9rem;
+    }
+    .fs-quiz-option-row input[type="text"] { flex: 1; }
+    .fs-remove-btn {
+      width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; border: 1.5px solid rgba(74,59,54,0.15);
+      background: var(--white-soft); color: #B3404A; cursor: pointer; font-size: 15px;
+    }
+
+    /* --- Inside jokes (up to 5) --- */
+    .fs-joke-row { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+    .fs-joke-row .fs-input { flex: 1; }
+
+    /* --- Live preview panel (phone-mockup style) --- */
+    .fs-phone { width: 100%; max-width: 300px; margin: 0 auto; background: #1c1917; border-radius: 2.25rem; padding: 12px; box-shadow: var(--shadow-soft); }
+    .fs-phone-screen {
+      border-radius: 1.75rem; overflow: hidden; min-height: 480px;
+      background: linear-gradient(160deg, #FFF3DD, var(--cream) 70%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2rem 1.25rem; text-align: center; gap: 0.6rem;
+    }
+    .fs-phone-avatars { display: flex; align-items: center; gap: 0.5rem; }
+    .fs-phone-avatars svg { width: 56px; height: 56px; }
+    .fs-phone-since { font-weight: 600; color: var(--rose); font-size: 13px; }
+    .fs-phone-message { font-family: var(--font-hand); font-size: 1.2rem; line-height: 1.4; max-height: 130px; overflow: hidden; }
+
+    .fs-submit-row { margin-top: 1rem; text-align: center; }
+
+    /* --- Full-screen overlay (loading + share) --- */
+    .fs-overlay { position: fixed; inset: 0; z-index: 50; display: none; }
+    .fs-overlay.fs-overlay-visible { display: block; }
+    .fs-loading-hug { animation: fs-pulse 1.1s ease-in-out infinite; display: inline-block; }
+    @keyframes fs-pulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.15) rotate(-4deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .fs-loading-hug { animation: none; }
+    }
+  </style>
+</head>
+<body class="sc-root theme-friendship">
+  <div class="fs-blob-tr"></div>
+  <div class="fs-blob-bl"></div>
+
+  <div class="fs-wrap">
+    <div class="fs-hero">
+      <h1><span class="fs-hero-deco">🎉</span> Celebrate your bestie 🫂 <span class="fs-hero-deco">✨</span></h1>
+      <p class="sc-body">Your memories, inside jokes and love, all in one card.</p>
+    </div>
+
+    <form id="friendshipForm" class="fs-grid" novalidate>
+      <div class="fs-form-col">
+
+        <div class="fs-field">
+          <label class="fs-label" for="yourName">Your name</label>
+          <input class="fs-input" type="text" id="yourName" name="yourName" maxlength="30" required />
+          <p class="fs-error" data-error-for="yourName"></p>
+        </div>
+
+        <div class="fs-field">
+          <label class="fs-label" for="friendName">Friend's name</label>
+          <input class="fs-input" type="text" id="friendName" name="friendName" maxlength="30" required />
+          <p class="fs-error" data-error-for="friendName"></p>
+        </div>
+
+        <div class="fs-field">
+          <label class="fs-label">Friend duo avatars 🫂</label>
+
+          <div class="fs-avatar-group">
+            <p class="fs-avatar-group-label">You</p>
+            <div class="fs-avatars" id="youAvatars">
+              <% avatarStyles.forEach((a, i) => { %>
+                <label class="fs-avatar-option">
+                  <input type="radio" name="youAvatar" value="<%= a %>" <%= i === 0 ? 'checked' : '' %> required />
+                  <div class="fs-avatar-card"><%- include('../partials/friend-avatar-svg', { style: a }) %></div>
+                </label>
+              <% }) %>
+            </div>
+            <p class="fs-error" data-error-for="youAvatar"></p>
+          </div>
+
+          <div class="fs-avatar-group">
+            <p class="fs-avatar-group-label">Your friend</p>
+            <div class="fs-avatars" id="friendAvatars">
+              <% avatarStyles.forEach((a, i) => { %>
+                <label class="fs-avatar-option">
+                  <input type="radio" name="friendAvatar" value="<%= a %>" <%= i === 1 ? 'checked' : '' %> required />
+                  <div class="fs-avatar-card"><%- include('../partials/friend-avatar-svg', { style: a }) %></div>
+                </label>
+              <% }) %>
+            </div>
+            <p class="fs-error" data-error-for="friendAvatar"></p>
+          </div>
+        </div>
+
+        <div class="fs-field">
+          <label class="fs-label" for="friendsSinceYear">Friends since <span class="fs-hint">(optional)</span></label>
+          <input class="fs-input" type="number" id="friendsSinceYear" name="friendsSinceYear" placeholder="e.g. 2015" min="1900" max="<%= new Date().getFullYear() %>" style="max-width: 160px;" />
+          <p class="fs-error" data-error-for="friendsSinceYear"></p>
+        </div>
+
+        <div class="fs-field">
+          <label class="fs-label">Photos <span class="fs-hint">(optional, up to <%= maxPhotos %>)</span></label>
+          <div class="fs-photo-row" id="photoRow">
+            <% for (let i = 0; i < maxPhotos; i++) { %>
+              <label class="fs-photo-slot" data-slot="<%= i %>">
+                <span class="fs-photo-plus">+</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" data-slot-input="<%= i %>" />
+              </label>
+            <% } %>
+          </div>
+          <p class="fs-error" data-error-for="photos"></p>
+        </div>
+
+        <div class="fs-field">
+          <label class="fs-label">Friendship quiz <span class="fs-hint">(optional, up to <%= maxQuizQuestions %>)</span></label>
+          <div id="quizList"></div>
+          <button type="button" class="sc-btn sc-btn-outline" id="addQuizBtn" style="font-size: 14px; padding: 0.6rem 1.25rem;">+ Add quiz question</button>
+          <p class="fs-error" data-error-for="quiz"></p>
+        </div>
+
+        <div class="fs-field">
+          <label class="fs-label">Inside jokes / favorite memories <span class="fs-hint">(optional, up to <%= maxInsideJokes %>)</span></label>
+          <div id="jokesList"></div>
+          <button type="button" class="sc-btn sc-btn-outline" id="addJokeBtn" style="font-size: 14px; padding: 0.6rem 1.25rem;">+ Add a line</button>
+        </div>
+
+        <div class="fs-field">
+          <label class="fs-label" for="message">Your message</label>
+          <textarea class="fs-textarea" id="message" name="message" maxlength="1000" placeholder="Tell them what their friendship means to you..." required></textarea>
+          <p class="fs-count" data-count-for="message">0 / 1000</p>
+          <p class="fs-error" data-error-for="message"></p>
+        </div>
+
+        <div class="fs-submit-row">
+          <button type="submit" class="sc-btn" id="submitBtn">Send to my bestie 🫂</button>
+        </div>
+      </div>
+
+      <div class="fs-preview-col">
+        <p class="fs-label" style="text-align: center; margin-bottom: 0.75rem;">Live preview</p>
+        <div class="fs-phone">
+          <div class="fs-phone-screen">
+            <div class="fs-phone-avatars" id="previewAvatars">
+              <%- include('../partials/friend-avatar-svg', { style: avatarStyles[0] }) %>
+              <span>🫂</span>
+              <%- include('../partials/friend-avatar-svg', { style: avatarStyles[1] }) %>
+            </div>
+            <p class="fs-phone-since" id="previewSince"></p>
+            <p class="fs-phone-message" id="previewMessage">Your message will appear here...</p>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Hidden templates — cloned by JS, never submitted themselves -->
+  <template id="quizRowTemplate">
+    <div class="fs-quiz-row">
+      <div style="display:flex; gap:0.5rem; align-items:flex-start;">
+        <div style="flex:1;">
+          <input class="fs-input" type="text" maxlength="150" placeholder="e.g. Where did we first meet?" data-quiz-question style="margin-bottom: 0.6rem;" />
+          <div class="fs-quiz-options" data-quiz-options></div>
+          <button type="button" class="sc-btn sc-btn-outline" data-quiz-add-option style="font-size: 12px; padding: 0.4rem 0.9rem; margin-top: 0.3rem;">+ Add option</button>
+          <p class="fs-hint">Tap the circle next to the correct answer.</p>
+        </div>
+        <button type="button" class="fs-remove-btn" data-quiz-remove title="Remove question">✕</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="quizOptionRowTemplate">
+    <div class="fs-quiz-option-row" style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.4rem;">
+      <input type="radio" data-quiz-correct title="Mark as the correct answer" />
+      <input class="fs-input" type="text" maxlength="50" placeholder="Option" data-quiz-option-input />
+      <button type="button" class="fs-remove-btn" data-quiz-option-remove title="Remove option" style="font-size: 13px;">✕</button>
+    </div>
+  </template>
+
+  <template id="jokeRowTemplate">
+    <div class="fs-joke-row">
+      <input class="fs-input" type="text" name="insideJokes" maxlength="100" placeholder="e.g. The time we got lost looking for tacos" />
+      <button type="button" class="fs-remove-btn" title="Remove line">✕</button>
+    </div>
+  </template>
+
+  <!-- ===== Full-screen overlay: loading -> share ===== -->
+  <div class="fs-overlay sc-screen-container" id="overlay">
+    <div class="sc-screen" id="screen-loading">
+      <div class="fs-loading-hug" style="font-size: 3rem;">🫂</div>
+      <h2>Wrapping it up with love…</h2>
+    </div>
+
+    <div class="sc-screen" id="screen-share">
+      <div class="sc-card sc-paper" style="max-width: 420px;">
+        <h2 style="margin-bottom: 0.5rem;">It's ready to send 🫂</h2>
+        <p class="sc-body" id="shareSubtitle" style="opacity: 0.8; margin-bottom: 1rem;"></p>
+        <p class="sc-body" style="word-break: break-all; opacity: 0.7; font-size: 14px;" id="shareUrlText"></p>
+        <div class="sc-share-row" style="margin: 1.25rem 0;">
+          <button type="button" class="sc-btn" id="overlayCopy">Copy link</button>
+          <a href="#" class="sc-btn sc-btn-gold" id="overlayWhatsapp">Send on WhatsApp</a>
+          <a href="#" class="sc-btn sc-btn-outline" id="overlayPreview">Preview</a>
+        </div>
+        <div class="sc-qr-box">
+          <img src="" alt="QR code to the card" id="overlayQr" />
+        </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed rgba(74,59,54,0.2);">
+          <p class="fs-label" style="color: var(--rose); margin-bottom: 0.4rem;">Your private link</p>
+          <p class="sc-body" style="font-size: 13px; opacity: 0.7; margin-bottom: 0.75rem;">
+            See when it's opened — keep this link to yourself, don't send it to <span id="shareRecipientName">them</span>.
+          </p>
+          <div class="sc-share-row">
+            <a href="#" class="sc-btn sc-btn-outline" id="overlayResults" target="_blank" rel="noopener">View status 📊</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/cardComponents.js"></script>
+  <script>
+    const S = window.SurpriseCard;
+    const MAX_PHOTOS = <%- JSON.stringify(maxPhotos) %>;
+    const MAX_QUIZ_QUESTIONS = <%- JSON.stringify(maxQuizQuestions) %>;
+    const MAX_INSIDE_JOKES = <%- JSON.stringify(maxInsideJokes) %>;
+
+    // --- Character counter ---
+    const messageEl = document.getElementById('message');
+    const messageCounter = document.querySelector('[data-count-for="message"]');
+    messageEl.addEventListener('input', () => {
+      messageCounter.textContent = `${messageEl.value.length} / 1000`;
+      updatePreview();
+    });
+
+    // --- Avatar svgs (for live preview) ---
+    const avatarSvgs = {};
+    document.querySelectorAll('#youAvatars .fs-avatar-card svg').forEach((svg, i) => {
+      const input = document.querySelectorAll('#youAvatars input[name="youAvatar"]')[i];
+      if (input) avatarSvgs[input.value] = svg.outerHTML;
+    });
+    document.querySelectorAll('input[name="youAvatar"], input[name="friendAvatar"]').forEach((r) => r.addEventListener('change', updatePreview));
+
+    const friendsSinceInput = document.getElementById('friendsSinceYear');
+    friendsSinceInput.addEventListener('input', updatePreview);
+
+    // --- Live preview ---
+    const previewAvatarsEl = document.getElementById('previewAvatars');
+    function updatePreview() {
+      const you = document.querySelector('input[name="youAvatar"]:checked')?.value;
+      const friend = document.querySelector('input[name="friendAvatar"]:checked')?.value;
+      previewAvatarsEl.innerHTML = `${avatarSvgs[you] || ''}<span>🫂</span>${avatarSvgs[friend] || ''}`;
+
+      const year = friendsSinceInput.value.trim();
+      document.getElementById('previewSince').textContent = year ? `Besties since ${year} 🫂` : '';
+
+      document.getElementById('previewMessage').textContent = messageEl.value.trim() || 'Your message will appear here...';
+    }
+    updatePreview();
+
+    // --- Photo slots (up to MAX_PHOTOS), each shows a preview thumbnail once chosen ---
+    const photoFiles = Array(MAX_PHOTOS).fill(null);
+    document.querySelectorAll('[data-slot-input]').forEach((input) => {
+      input.addEventListener('change', () => {
+        const slot = Number(input.getAttribute('data-slot-input'));
+        const file = input.files[0];
+        photoFiles[slot] = file || null;
+        const slotEl = input.closest('.fs-photo-slot');
+        slotEl.querySelectorAll('img').forEach((img) => img.remove());
+        if (file) {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(file);
+          slotEl.prepend(img);
+        }
+      });
+    });
+
+    // --- Inside jokes (dynamic, up to MAX_INSIDE_JOKES) ---
+    const jokesList = document.getElementById('jokesList');
+    const jokeTemplate = document.getElementById('jokeRowTemplate');
+    const addJokeBtn = document.getElementById('addJokeBtn');
+
+    function addJoke() {
+      if (jokesList.children.length >= MAX_INSIDE_JOKES) return;
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = jokeTemplate.innerHTML.trim();
+      jokesList.appendChild(wrapper.firstChild);
+      addJokeBtn.style.display = jokesList.children.length >= MAX_INSIDE_JOKES ? 'none' : '';
+    }
+    addJokeBtn.addEventListener('click', addJoke);
+    jokesList.addEventListener('click', (e) => {
+      if (e.target.classList.contains('fs-remove-btn')) {
+        e.target.closest('.fs-joke-row').remove();
+        addJokeBtn.style.display = '';
+      }
+    });
+    addJoke();
+
+    // --- Friendship quiz (dynamic, up to MAX_QUIZ_QUESTIONS, each with 2-4 options) ---
+    const quizList = document.getElementById('quizList');
+    const quizTemplate = document.getElementById('quizRowTemplate');
+    const quizOptionTemplate = document.getElementById('quizOptionRowTemplate');
+    const addQuizBtn = document.getElementById('addQuizBtn');
+    let quizRowCounter = 0;
+
+    function addQuizOption(optionsList) {
+      if (optionsList.children.length >= 4) return;
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = quizOptionTemplate.innerHTML.trim();
+      const row = wrapper.firstChild;
+      optionsList.appendChild(row);
+      row.querySelector('[data-quiz-option-remove]').addEventListener('click', () => {
+        if (optionsList.children.length <= 2) return; // a quiz question needs at least 2 options
+        row.remove();
+        refreshQuizAddOptionVisibility(optionsList);
+      });
+      refreshQuizAddOptionVisibility(optionsList);
+    }
+
+    function refreshQuizAddOptionVisibility(optionsList) {
+      const addBtn = optionsList.parentElement.querySelector('[data-quiz-add-option]');
+      if (addBtn) addBtn.style.display = optionsList.children.length >= 4 ? 'none' : '';
+    }
+
+    function addQuizQuestion() {
+      if (quizList.children.length >= MAX_QUIZ_QUESTIONS) return;
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = quizTemplate.innerHTML.trim();
+      const row = wrapper.firstChild;
+      quizRowCounter += 1;
+      const radioName = `fs-correct-${quizRowCounter}`;
+      quizList.appendChild(row);
+
+      const optionsList = row.querySelector('[data-quiz-options]');
+      for (let i = 0; i < 2; i++) addQuizOption(optionsList);
+      optionsList.querySelectorAll('[data-quiz-correct]').forEach((r) => { r.name = radioName; });
+
+      row.querySelector('[data-quiz-add-option]').addEventListener('click', () => {
+        addQuizOption(optionsList);
+        optionsList.querySelectorAll('[data-quiz-correct]').forEach((r) => { r.name = radioName; });
+      });
+
+      row.querySelector('[data-quiz-remove]').addEventListener('click', () => {
+        row.remove();
+        addQuizBtn.style.display = quizList.children.length >= MAX_QUIZ_QUESTIONS ? 'none' : '';
+      });
+
+      addQuizBtn.style.display = quizList.children.length >= MAX_QUIZ_QUESTIONS ? 'none' : '';
+    }
+    addQuizBtn.addEventListener('click', addQuizQuestion);
+
+    function collectQuiz() {
+      const quiz = [];
+      Array.from(quizList.children).forEach((row) => {
+        const question = row.querySelector('[data-quiz-question]').value.trim();
+        if (!question) return;
+        const optionInputs = Array.from(row.querySelectorAll('[data-quiz-option-input]'));
+        const correctInputs = Array.from(row.querySelectorAll('[data-quiz-correct]'));
+        const options = optionInputs.map((input) => input.value.trim());
+        let correctIndex = correctInputs.findIndex((r) => r.checked);
+        quiz.push({ question, options, correctIndex });
+      });
+      return quiz;
+    }
+
+    // --- Validation ---
+    function showErrors(errors) {
+      document.querySelectorAll('.fs-error').forEach((el) => { el.classList.remove('fs-show'); el.textContent = ''; });
+      Object.entries(errors || {}).forEach(([field, message]) => {
+        const el = document.querySelector(`[data-error-for="${field}"]`);
+        if (el) { el.textContent = message; el.classList.add('fs-show'); }
+      });
+    }
+
+    function clientValidate() {
+      const errors = {};
+      if (!document.getElementById('yourName').value.trim()) errors.yourName = 'Your name is required.';
+      if (!document.getElementById('friendName').value.trim()) errors.friendName = "Your friend's name is required.";
+      if (!messageEl.value.trim()) errors.message = 'Write your message.';
+      const quiz = collectQuiz();
+      for (const q of quiz) {
+        const filled = q.options.filter(Boolean);
+        if (filled.length < 2) { errors.quiz = 'Each quiz question needs at least 2 filled-in options.'; break; }
+        if (q.correctIndex < 0 || !q.options[q.correctIndex]) { errors.quiz = 'Mark which option is correct for each quiz question.'; break; }
+      }
+      return errors;
+    }
+
+    // --- Submit flow: form -> loading overlay -> share overlay ---
+    const overlay = document.getElementById('overlay');
+
+    document.getElementById('friendshipForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const clientErrors = clientValidate();
+      if (Object.keys(clientErrors).length) { showErrors(clientErrors); return; }
+      showErrors({});
+
+      overlay.classList.add('fs-overlay-visible');
+      const overlayScreens = S.createScreenContainer(overlay);
+      overlayScreens.goTo(0);
+
+      const formData = new FormData();
+      formData.append('yourName', document.getElementById('yourName').value.trim());
+      formData.append('friendName', document.getElementById('friendName').value.trim());
+      formData.append('youAvatar', document.querySelector('input[name="youAvatar"]:checked')?.value || '');
+      formData.append('friendAvatar', document.querySelector('input[name="friendAvatar"]:checked')?.value || '');
+      formData.append('friendsSinceYear', friendsSinceInput.value.trim());
+      formData.append('message', messageEl.value.trim());
+      formData.append('quizJson', JSON.stringify(collectQuiz()));
+
+      document.querySelectorAll('#jokesList input[name="insideJokes"]').forEach((input) => {
+        if (input.value.trim()) formData.append('insideJokes', input.value.trim());
+      });
+
+      photoFiles.forEach((f) => { if (f) formData.append('photos', f); });
+
+      try {
+        const res = await fetch('/cards/friendship/create', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': <%- JSON.stringify(csrfToken) %> },
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          overlay.classList.remove('fs-overlay-visible');
+          showErrors(data.errors || {});
+          return;
+        }
+
+        setTimeout(() => {
+          document.getElementById('shareSubtitle').textContent = data.whatsappPreviewTitle;
+          document.getElementById('shareUrlText').textContent = data.shareUrl;
+          document.getElementById('overlayQr').src = data.qrDataUrl;
+          document.getElementById('shareRecipientName').textContent = data.recipientName;
+          document.getElementById('overlayResults').setAttribute('href', data.resultsUrl);
+          S.wireShareScreen({
+            copyBtn: document.getElementById('overlayCopy'),
+            whatsappBtn: document.getElementById('overlayWhatsapp'),
+            previewBtn: document.getElementById('overlayPreview'),
+            shareUrl: data.shareUrl,
+            whatsappText: 'Bestie! I made something for you 🎁🫂',
+          });
+          overlayScreens.next();
+          S.burstConfetti({ colors: ['#F4A261', '#FFD166', '#8ECAE6', '#F7A8C4'] });
+        }, 1400);
+      } catch (err) {
+        overlay.classList.remove('fs-overlay-visible');
+        showErrors({ yourName: 'Something went wrong sending this. Please try again.' });
+      }
+    });
+  </script>
+</body>
+</html>

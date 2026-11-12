@@ -37,6 +37,19 @@ router.post(
   verifyTokenAfterUpload,
   surpriseCardsController.postPuzzleCreate
 );
+router.get('/cards/friendship/create', surpriseCardsController.getFriendshipCreate);
+router.post(
+  '/cards/friendship/create',
+  cardCreateLimiter,
+  // .any(8), not the default export — the default caps at the admin's
+  // Settings -> Uploads -> "max photos per card" value (6 by default),
+  // which is lower than the 8 this card type explicitly promises in its
+  // own UI; .any() enforces its own fixed limit instead, independent of
+  // that shared setting (same reasoning as Anniversary's timeline photos).
+  dynamicPhotoUpload.any(8),
+  verifyTokenAfterUpload,
+  surpriseCardsController.postFriendshipCreate
+);
 
 router.get('/', maintenanceGate, publicController.getLanding);
 router.get('/demo/:templateSlug', maintenanceGate, publicController.getDemo);
