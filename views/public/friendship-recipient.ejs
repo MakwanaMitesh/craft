@@ -499,7 +499,8 @@
       svgWrap.style.animation = '';
     }
 
-    document.getElementById('saveBadgeBtn').addEventListener('click', () => {
+    const saveBadgeBtn = document.getElementById('saveBadgeBtn');
+    saveBadgeBtn.addEventListener('click', () => {
       const svg = document.getElementById('badgeSvg');
       const svgData = new XMLSerializer().serializeToString(svg);
       const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
@@ -533,14 +534,27 @@
         ctx.fillText(<%- JSON.stringify(`${card.recipientName} & ${card.senderName}`) %>, size / 2, size * 0.67);
         ctx.globalAlpha = 1;
 
-        canvas.toBlob((blob) => {
+        function triggerDownload(href) {
           const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
+          link.href = href;
           link.download = 'friendship-badge.png';
           document.body.appendChild(link);
           link.click();
           link.remove();
-        }, 'image/png');
+        }
+
+        // toBlob isn't implemented in every WebView (notably some older
+        // in-app Android browsers) — toDataURL is the older, more
+        // universally supported fallback for the same result.
+        if (canvas.toBlob) {
+          canvas.toBlob((blob) => triggerDownload(URL.createObjectURL(blob)), 'image/png');
+        } else {
+          triggerDownload(canvas.toDataURL('image/png'));
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        saveBadgeBtn.textContent = "Couldn't save — try a screenshot instead";
       };
       img.src = url;
     });

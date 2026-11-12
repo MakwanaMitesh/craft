@@ -106,12 +106,18 @@
   // Like FloatingHearts but for an arbitrary mix of plain-text emoji at
   // varied sizes/speeds — Friendship's floating 🫂💛🎈✨🎉🧡, and any future
   // card that wants a similar effect without a dedicated SVG shape.
-  function startFloatingEmojis(layerEl, { emojis = ['✨'], count = 12, intervalMs = 900, speedMultiplier = 1 } = {}) {
+  function startFloatingEmojis(layerEl, { emojis = ['✨'], count = 12, intervalMs = 900, speedMultiplier = 1, maxConcurrent = 15 } = {}) {
     if (prefersReducedMotion()) return { stop() {} };
 
     let stopped = false;
+    let alive = 0;
     function spawnOne() {
-      if (stopped) return;
+      // A hard ceiling on top of the timing-based implicit rate limit —
+      // without it, a backgrounded tab's throttled/batched timers can let
+      // several ticks' worth of spawns fire in a burst once it's visible
+      // again, briefly spiking well past what the interval alone implies.
+      if (stopped || alive >= maxConcurrent) return;
+      alive += 1;
       const span = document.createElement('span');
       span.className = 'sc-emoji';
       span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
@@ -119,7 +125,7 @@
       span.style.fontSize = `${16 + Math.random() * 22}px`;
       span.style.animationDuration = `${(5 + Math.random() * 3) * speedMultiplier}s`;
       layerEl.appendChild(span);
-      span.addEventListener('animationend', () => span.remove());
+      span.addEventListener('animationend', () => { alive -= 1; span.remove(); });
     }
 
     for (let i = 0; i < count; i++) setTimeout(spawnOne, i * (intervalMs / count));
