@@ -105,6 +105,18 @@ exports.viewSurpriseCard = catchAsync(async (req, res) => {
     });
   }
 
+  if (card.type === 'puzzle') {
+    // Deliberately generic OG text, same reasoning as every other card type
+    // here — WhatsApp/Instagram's link preview must never show the actual
+    // photo (that's the whole surprise) or the hidden message.
+    return res.render('public/puzzle-recipient', {
+      title: `${card.recipientName}, a puzzle is waiting for you 🧩`,
+      card,
+      photoUrl: card.photos[0],
+      gridSize: card.fields.gridSize,
+    });
+  }
+
   // No other type exists yet — unreachable with the current SURPRISE_CARD_TYPES enum.
   return res.status(404).render('public/card-unavailable', { title: 'Card not found' });
 });
@@ -444,6 +456,43 @@ exports.postPuzzleCreate = catchAsync(async (req, res) => {
     whatsappMessage: `Solve this to unlock your surprise 🧩🔒 ${shareUrl}`,
     whatsappPreviewTitle: `${card.recipientName}, a puzzle is waiting for you 🧩`,
   });
+});
+
+// Fired once, the moment the puzzle is solved (not gated behind the
+// "Unlock my surprise" tap, so an abandoned card still records that it was
+// actually solved). Same atomic "only the first write wins" guard as
+// answerSurpriseCard, keyed off recipientAnswer so a stray double-fire (or
+// someone reopening an already-solved card) can't clobber the real stats
+// with, say, a second playthrough's numbers.
+exports.solvePuzzleCard = catchAsync(async (req, res) => {
+  const moves = Number(req.body?.moves);
+  const timeSeconds = Number(req.body?.timeSeconds);
+  const peeks = Number(req.body?.peeks);
+  if (!Number.isFinite(moves) || !Number.isFinite(timeSeconds) || !Number.isFinite(peeks)) {
+    return res.status(400).json({ success: false });
+  }
+
+  const updated = await SurpriseCard.findOneAndUpdate(
+    { slug: req.params.slug, recipientAnswer: { $ne: 'solved' } },
+    {
+      $set: {
+        recipientAnswer: 'solved',
+        answeredAt: new Date(),
+        'fields.solveStats': {
+          moves: Math.max(0, Math.round(moves)),
+          timeSeconds: Math.max(0, Math.round(timeSeconds)),
+          peeks: Math.max(0, Math.round(peeks)),
+        },
+      },
+    }
+  );
+
+  if (!updated) {
+    const exists = await SurpriseCard.exists({ slug: req.params.slug });
+    return res.status(exists ? 200 : 404).json({ success: Boolean(exists) });
+  }
+
+  res.json({ success: true });
 });
 
 // Private, sender-only status page — gated by a secret `key` query param

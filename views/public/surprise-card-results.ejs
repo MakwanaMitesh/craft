@@ -54,7 +54,18 @@
         </div>
 
         <div class="res-step <%= card.recipientAnswer ? '' : 'res-pending' %>">
-          <% if (card.recipientAnswer === 'yes') { %>
+          <% if (card.recipientAnswer === 'solved') { %>
+            <div class="res-icon">🧩</div>
+            <div>
+              <p class="res-step-label">Solved!</p>
+              <p class="res-step-time">
+                <%= card.answeredAt.toLocaleString() %> ·
+                <%= card.fields.solveStats.moves %> moves ·
+                <%= String(Math.floor(card.fields.solveStats.timeSeconds / 60)).padStart(2, '0') %>:<%= String(card.fields.solveStats.timeSeconds % 60).padStart(2, '0') %> ·
+                <%= card.fields.solveStats.peeks %> peek<%= card.fields.solveStats.peeks === 1 ? '' : 's' %>
+              </p>
+            </div>
+          <% } else if (card.recipientAnswer === 'yes') { %>
             <div class="res-icon">💛</div>
             <div>
               <p class="res-step-label">Answered "Yes"</p>

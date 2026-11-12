@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <meta name="description" content="A little surprise for <%= card.recipientName %>." />
+  <!-- Deliberately generic Open Graph text and no image — the real photo
+       and message are the whole surprise, so a WhatsApp/Instagram link
+       preview must never show either of them. -->
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="Tap to play." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    .theme-puzzle {
+      --rose: #F28C7A;
+      --gold: #FFE5A0;
+      background-color: var(--cream);
+      background-image: radial-gradient(rgba(74,59,54,0.08) 1.5px, transparent 1.5px);
+      background-size: 18px 18px;
+      height: 100%;
+    }
+
+    /* ===== Screen 1: The Challenge ===== */
+    .pzr-lock-wrap { font-size: 4rem; animation: pzr-wiggle 2.2s ease-in-out infinite; }
+    @keyframes pzr-wiggle {
+      0%, 100% { transform: rotate(0deg); }
+      8% { transform: rotate(-8deg); }
+      16% { transform: rotate(7deg); }
+      24% { transform: rotate(-5deg); }
+      32% { transform: rotate(3deg); }
+      40% { transform: rotate(0deg); }
+    }
+    .pzr-lock-wrap.pzr-unlocked { animation: none; display: inline-block; }
+    .pzr-lock-wrap.pzr-unlock-anim { animation: pzr-unlock-pop 700ms var(--ease-soft) forwards; }
+    @keyframes pzr-unlock-pop {
+      0% { transform: rotate(0deg) scale(1); }
+      40% { transform: rotate(-18deg) scale(1.15); }
+      70% { transform: rotate(8deg) scale(1.1); }
+      100% { transform: rotate(0deg) scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pzr-lock-wrap { animation: none; }
+      .pzr-lock-wrap.pzr-unlock-anim { animation: none; }
+    }
+
+    /* ===== Screen 2: The Puzzle ===== */
+    .pzr-puzzle-screen { justify-content: flex-start !important; padding-top: 1.25rem !important; gap: 0.75rem; }
+    .pzr-topbar {
+      width: 100%; max-width: 480px; display: flex; align-items: center; justify-content: space-between;
+      font-family: var(--font-body); font-weight: 600; font-size: 15px; padding: 0 16px; box-sizing: border-box;
+    }
+    .pzr-stats { opacity: 0.8; }
+
+    .pzr-board-wrap { width: 100%; max-width: 480px; padding: 0 16px; box-sizing: border-box; }
+    .pzr-board {
+      width: 100%; aspect-ratio: 1 / 1; display: grid; gap: 2px;
+      background: var(--cocoa); border-radius: 10px; overflow: hidden;
+      box-shadow: var(--shadow-soft); position: relative;
+      transition: gap 500ms var(--ease-soft);
+    }
+    .pzr-board.pzr-solved-board { gap: 0; }
+    .pzr-tile {
+      background-repeat: no-repeat; border-radius: 6px; cursor: pointer;
+      position: relative; transition: box-shadow 250ms var(--ease-soft);
+      touch-action: none;
+    }
+    .pzr-board.pzr-solved-board .pzr-tile { border-radius: 0; cursor: default; }
+    .pzr-tile.pzr-selected { box-shadow: 0 0 0 3px var(--rose), 0 6px 14px rgba(0,0,0,0.25); transform: scale(0.96); z-index: 2; }
+    .pzr-tile.pzr-correct-glow { animation: pzr-correct-pulse 900ms var(--ease-soft); }
+    @keyframes pzr-correct-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(191,215,234,0.9); }
+      60% { box-shadow: 0 0 0 8px rgba(191,215,234,0); }
+      100% { box-shadow: 0 0 0 0 rgba(191,215,234,0); }
+    }
+    .pzr-shine {
+      position: absolute; inset: 0; pointer-events: none; z-index: 3; opacity: 0;
+      background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.75) 48%, transparent 66%);
+      background-size: 250% 100%; background-position: -40% 0;
+    }
+    .pzr-shine.pzr-shine-run {
+      opacity: 1;
+      animation: pzr-shine-sweep 1100ms ease-out forwards;
+    }
+    @keyframes pzr-shine-sweep {
+      0% { background-position: -60% 0; opacity: 1; }
+      85% { background-position: 110% 0; opacity: 1; }
+      100% { background-position: 110% 0; opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pzr-tile.pzr-correct-glow { animation: none; }
+      .pzr-shine.pzr-shine-run { animation: none; opacity: 0; }
+      .pzr-board { transition: none; }
+    }
+
+    .pzr-actions-row { display: flex; gap: 0.75rem; }
+    .pzr-small-btn {
+      font-family: var(--font-body); font-size: 13px; font-weight: 600;
+      padding: 0.55rem 1rem; border-radius: 999px; border: 1.5px solid rgba(74,59,54,0.18);
+      background: var(--white-soft); color: var(--cocoa); cursor: pointer;
+    }
+
+    .pzr-peek-overlay {
+      position: fixed; inset: 0; z-index: 40; background: rgba(28,25,23,0.92);
+      display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none;
+      transition: opacity 200ms var(--ease-soft);
+    }
+    .pzr-peek-overlay.pzr-peek-visible { opacity: 1; pointer-events: auto; }
+    .pzr-peek-overlay img { max-width: 86vw; max-height: 70vh; border-radius: 14px; box-shadow: var(--shadow-soft); }
+    .pzr-peek-label { position: absolute; top: 2rem; color: #fff; font-weight: 600; }
+
+    .pzr-solved-text { text-align: center; }
+    .pzr-solved-text h2 { margin-bottom: 0.25rem; }
+
+    /* ===== Screen 3: Unlocked ===== */
+    .pzr-reveal-card { max-width: 420px; text-align: center; }
+    .pzr-reveal-message { font-family: var(--font-body); font-size: 17px; line-height: 1.6; margin: 1rem 0; white-space: pre-wrap; }
+  </style>
+</head>
+<body class="sc-root theme-puzzle">
+
+  <div class="sc-screen-container">
+
+    <!-- SCREEN 1: The Challenge -->
+    <div class="sc-screen" id="screen-challenge">
+      <div class="pzr-lock-wrap" id="lockIcon1">🔒</div>
+      <h1 class="sc-h1" style="margin-top: 0.5rem;"><%= card.recipientName %>, your surprise is locked 🔒</h1>
+      <p class="sc-body" style="opacity: 0.75;">Solve the puzzle to unlock it</p>
+      <button type="button" class="sc-btn" id="playBtn" style="margin-top: 1rem;">Let's play 🧩</button>
+    </div>
+
+    <!-- SCREEN 2: The Puzzle -->
+    <div class="sc-screen pzr-puzzle-screen" id="screen-puzzle">
+      <div class="pzr-topbar">
+        <span class="pzr-stats" id="statsLine">Moves: 0 · 00:00</span>
+        <span id="lockIcon2" style="font-size: 1.4rem;">🔒</span>
+      </div>
+
+      <div class="pzr-board-wrap">
+        <div class="pzr-board" id="board"></div>
+      </div>
+
+      <div class="pzr-actions-row" id="gameActions">
+        <button type="button" class="pzr-small-btn" id="peekBtn">Peek 👀</button>
+        <button type="button" class="pzr-small-btn" id="shuffleBtn">Shuffle again</button>
+      </div>
+
+      <div class="pzr-solved-text" id="solvedText" style="display: none;">
+        <h2 id="solvedHeadline">You did it! 🎉</h2>
+        <button type="button" class="sc-btn" id="unlockBtn">Unlock my surprise 🔓</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: Unlocked -->
+    <div class="sc-screen" id="screen-unlocked">
+      <div class="sc-card sc-paper pzr-reveal-card">
+        <div class="pzr-lock-wrap pzr-unlocked" style="font-size: 2.5rem;">🔓</div>
+        <h2 style="margin-top: 0.5rem;">From <%= card.senderName %></h2>
+        <p class="pzr-reveal-message"><%= card.fields.hiddenMessage %></p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="pzr-peek-overlay" id="peekOverlay">
+    <span class="pzr-peek-label">👀 Peek</span>
+    <img src="<%= photoUrl %>" alt="" />
+  </div>
+
+  <script src="/js/cardComponents.js"></script>
+  <script>
+    const S = window.SurpriseCard;
+    const SLUG = <%- JSON.stringify(card.slug) %>;
+    const CSRF_TOKEN = <%- JSON.stringify(csrfToken) %>;
+    const PHOTO_URL = <%- JSON.stringify(photoUrl) %>;
+    const N = <%- JSON.stringify(gridSize) %>;
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const screens = S.createScreenContainer(document.querySelector('.sc-screen-container'));
+
+    document.getElementById('playBtn').addEventListener('click', () => {
+      screens.next();
+      startPuzzle();
+    });
+
+    // --- Board state ---
+    const board = document.getElementById('board');
+    const statsLine = document.getElementById('statsLine');
+    const gameActions = document.getElementById('gameActions');
+    const solvedText = document.getElementById('solvedText');
+    const peekBtn = document.getElementById('peekBtn');
+    const shuffleBtn = document.getElementById('shuffleBtn');
+    const peekOverlay = document.getElementById('peekOverlay');
+
+    let piecesAtSlot = []; // piecesAtSlot[slot] = which image region (0..N*N-1) is shown at that slot
+    let tileEls = [];
+    let selectedSlot = null;
+    let moves = 0;
+    let peeks = 0;
+    let solved = false;
+    let timerHandle = null;
+    let elapsedSeconds = 0;
+    let dragSourceSlot = null;
+
+    function formatTime(total) {
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function updateStatsLine() {
+      statsLine.textContent = `Moves: ${moves} · ${formatTime(elapsedSeconds)}`;
+    }
+
+    // Pauses while the tab is hidden instead of ticking (and drifting the
+    // final recorded time) in the background — same pattern used for the
+    // Anniversary countdown.
+    function startPausableInterval(fn, ms) {
+      let timer = null;
+      function start() { if (!timer) { timer = setInterval(fn, ms); } }
+      function stop() { clearInterval(timer); timer = null; }
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') stop(); else if (!solved) start();
+      });
+      start();
+      return { stop };
+    }
+
+    function shuffledPermutation(size) {
+      let arr = Array.from({ length: size * size }, (_, i) => i);
+      const isIdentity = (a) => a.every((v, i) => v === i);
+      do {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+      } while (isIdentity(arr) && arr.length > 1);
+      return arr;
+    }
+
+    function paintTile(el, slot) {
+      const piece = piecesAtSlot[slot];
+      const row = Math.floor(piece / N);
+      const col = piece % N;
+      el.style.backgroundImage = `url(${PHOTO_URL})`;
+      el.style.backgroundSize = `${N * 100}% ${N * 100}%`;
+      el.style.backgroundPosition = N > 1
+        ? `${(col / (N - 1)) * 100}% ${(row / (N - 1)) * 100}%`
+        : '0% 0%';
+      el.classList.toggle('pzr-correct-glow', false);
+      // Re-trigger the glow animation on a fresh paint if this slot is correct.
+      if (piece === slot) {
+        requestAnimationFrame(() => el.classList.add('pzr-correct-glow'));
+        setTimeout(() => el.classList.remove('pzr-correct-glow'), 950);
+      }
+    }
+
+    function buildBoard() {
+      board.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+      board.style.gridTemplateRows = `repeat(${N}, 1fr)`;
+      board.innerHTML = '';
+      board.classList.remove('pzr-solved-board');
+      tileEls = [];
+      for (let slot = 0; slot < N * N; slot++) {
+        const tile = document.createElement('div');
+        tile.className = 'pzr-tile';
+        tile.setAttribute('draggable', 'true');
+        tile.dataset.slot = String(slot);
+        board.appendChild(tile);
+        tileEls.push(tile);
+        wireTile(tile, slot);
+        paintTile(tile, slot);
+      }
+    }
+
+    function resetSelection() {
+      if (selectedSlot !== null && tileEls[selectedSlot]) tileEls[selectedSlot].classList.remove('pzr-selected');
+      selectedSlot = null;
+    }
+
+    function swapTiles(slotA, slotB) {
+      if (solved || slotA === slotB) return;
+      const elA = tileEls[slotA];
+      const elB = tileEls[slotB];
+      moves += 1;
+      updateStatsLine();
+
+      if (prefersReducedMotion) {
+        [piecesAtSlot[slotA], piecesAtSlot[slotB]] = [piecesAtSlot[slotB], piecesAtSlot[slotA]];
+        paintTile(elA, slotA);
+        paintTile(elB, slotB);
+        afterSwap();
+        return;
+      }
+
+      const rectA = elA.getBoundingClientRect();
+      const rectB = elB.getBoundingClientRect();
+      const dx = rectB.left - rectA.left;
+      const dy = rectB.top - rectA.top;
+
+      [elA, elB].forEach((el) => { el.style.zIndex = '4'; el.style.transition = 'transform 280ms ease'; });
+      elA.style.transform = `translate(${dx}px, ${dy}px) scale(1.05)`;
+      elB.style.transform = `translate(${-dx}px, ${-dy}px) scale(1.05)`;
+
+      setTimeout(() => {
+        [piecesAtSlot[slotA], piecesAtSlot[slotB]] = [piecesAtSlot[slotB], piecesAtSlot[slotA]];
+        paintTile(elA, slotA);
+        paintTile(elB, slotB);
+        [elA, elB].forEach((el) => {
+          el.style.transition = 'none';
+          el.style.transform = '';
+          el.style.zIndex = '';
+        });
+        requestAnimationFrame(() => {
+          [elA, elB].forEach((el) => { el.style.transition = ''; });
+        });
+        afterSwap();
+      }, 280);
+    }
+
+    function afterSwap() {
+      if (piecesAtSlot.every((piece, slot) => piece === slot)) handleSolved();
+    }
+
+    function wireTile(tile, slot) {
+      tile.addEventListener('click', () => {
+        if (solved) return;
+        if (selectedSlot === null) {
+          selectedSlot = slot;
+          tile.classList.add('pzr-selected');
+          return;
+        }
+        if (selectedSlot === slot) {
+          resetSelection();
+          return;
+        }
+        const prev = selectedSlot;
+        resetSelection();
+        swapTiles(prev, slot);
+      });
+
+      tile.addEventListener('dragstart', () => { dragSourceSlot = slot; });
+      tile.addEventListener('dragover', (e) => e.preventDefault());
+      tile.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dragSourceSlot !== null) {
+          resetSelection();
+          swapTiles(dragSourceSlot, slot);
+          dragSourceSlot = null;
+        }
+      });
+    }
+
+    function shuffleBoard() {
+      piecesAtSlot = shuffledPermutation(N);
+      tileEls.forEach((el, slot) => paintTile(el, slot));
+      resetSelection();
+    }
+
+    function resetGame() {
+      moves = 0;
+      elapsedSeconds = 0;
+      peeks = 0;
+      solved = false;
+      updateStatsLine();
+      shuffleBoard();
+      board.classList.remove('pzr-solved-board');
+      gameActions.style.display = '';
+      solvedText.style.display = 'none';
+      document.getElementById('lockIcon2').textContent = '🔒';
+    }
+
+    shuffleBtn.addEventListener('click', resetGame);
+
+    peekBtn.addEventListener('click', () => {
+      peeks += 1;
+      peekOverlay.classList.add('pzr-peek-visible');
+      peekBtn.disabled = true;
+      setTimeout(() => {
+        peekOverlay.classList.remove('pzr-peek-visible');
+        peekBtn.disabled = false;
+      }, 2000);
+    });
+
+    function handleSolved() {
+      solved = true;
+      if (pausableTimer) pausableTimer.stop();
+
+      board.classList.add('pzr-solved-board');
+
+      // Shine sweep across the now-complete photo, then confetti.
+      setTimeout(() => {
+        const shine = document.createElement('div');
+        shine.className = 'pzr-shine pzr-shine-run';
+        board.appendChild(shine);
+        setTimeout(() => shine.remove(), 1200);
+        S.burstConfetti({ colors: ['#F28C7A', '#FFE5A0', '#BFD7EA'] });
+      }, 520);
+
+      document.getElementById('lockIcon2').textContent = '🔓';
+      document.getElementById('lockIcon2').classList.add('pzr-unlock-anim');
+
+      document.getElementById('solvedHeadline').textContent = `You did it! 🎉 Solved in ${moves} moves and ${formatTime(elapsedSeconds)}`;
+      gameActions.style.display = 'none';
+      setTimeout(() => { solvedText.style.display = 'block'; }, 900);
+
+      // Save stats immediately, independent of whether they ever tap
+      // "Unlock my surprise" — an abandoned card should still count as solved.
+      fetch(`/c/${SLUG}/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+        body: JSON.stringify({ moves, timeSeconds: elapsedSeconds, peeks, _csrf: CSRF_TOKEN }),
+        keepalive: true,
+      }).catch(() => {});
+    }
+
+    document.getElementById('unlockBtn').addEventListener('click', () => {
+      screens.next();
+    });
+
+    let pausableTimer = null;
+
+    function startPuzzle() {
+      buildBoard();
+      resetGame();
+      pausableTimer = startPausableInterval(() => {
+        elapsedSeconds += 1;
+        updateStatsLine();
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
