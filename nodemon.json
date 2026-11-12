@@ -1,0 +1,22 @@
+{
+  "watch": [
+    "app.js",
+    "config/",
+    "controllers/",
+    "jobs/",
+    "middleware/",
+    "migrations/",
+    "models/",
+    "routes/",
+    "utils/",
+    "views/"
+  ],
+  "ignore": [
+    "public/images/uploads/*",
+    "public/css/output.css",
+    "node_modules/*",
+    "*.log"
+  ],
+  "ext": "js,mjs,cjs,json,ejs",
+  "signal": "SIGINT"
+}

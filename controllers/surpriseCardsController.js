@@ -171,6 +171,28 @@ exports.answerSurpriseCard = catchAsync(async (req, res) => {
 // confirmation beyond the client-side one: this just raises a flag for a
 // human to look at, it doesn't take the card down by itself.
 const AUTO_HIDE_REPORT_THRESHOLD = 3;
+// Guards against a trivially scripted burst of spoofed IPs all hitting the
+// endpoint within seconds of each other — a determined attacker who
+// controls genuinely distinct IPs can still clear both of these bars, this
+// is a speed bump against the cheap/common case, not a hard guarantee (see
+// the trust-proxy documentation in app.js/.env.example for the actual fix
+// to IP spoofing itself).
+const AUTO_HIDE_MIN_WINDOW_MS = 2 * 60 * 1000; // first-to-last counted report must span at least this long
+const AUTO_HIDE_MIN_DISTINCT_RANGES = 2; // at least this many different coarse IP ranges among the counted reports
+
+// A coarse, non-identifying bucket — just enough to say "probably not the
+// same actor repeating with trivially incremented fake IPs," never precise
+// enough to itself be a privacy concern. IPv6 falls back to the first two
+// hextets for the same reason; anything unparseable just becomes its own
+// one-off bucket (counts as "distinct" from everything else, which is the
+// conservative direction — it won't block a legitimate report).
+function coarseIpRange(ip) {
+  const v4 = String(ip || '').match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (v4) return `${v4[1]}.${v4[2]}`;
+  const v6 = String(ip || '').split(':');
+  if (v6.length > 2) return v6.slice(0, 2).join(':');
+  return String(ip || 'unknown');
+}
 
 exports.reportSurpriseCard = catchAsync(async (req, res) => {
   // Permanent (no date component, unlike the view-uniqueness hashIp in
@@ -183,7 +205,10 @@ exports.reportSurpriseCard = catchAsync(async (req, res) => {
     {
       $set: { isReported: true, reportedAt: new Date() },
       $inc: { reportCount: 1 },
-      $push: { reportedIpHashes: ipHash },
+      $push: {
+        reportedIpHashes: ipHash,
+        reportLog: { $each: [{ at: new Date(), range: coarseIpRange(req.ip) }], $slice: -20 },
+      },
     },
     { new: true }
   );
@@ -196,12 +221,18 @@ exports.reportSurpriseCard = catchAsync(async (req, res) => {
     return res.status(exists ? 200 : 404).json({ success: Boolean(exists) });
   }
 
-  // Auto-hide once enough independent IPs have flagged it — distinct from
-  // an admin's own isDisabled toggle (pendingReview marks *why*), so the
-  // admin list can surface "needs a human look" separately from "an admin
-  // already decided to take this down."
+  // Auto-hide once enough independent-*looking* reports have landed —
+  // distinct from an admin's own isDisabled toggle (pendingReview marks
+  // *why*), so the admin list can surface "needs a human look" separately
+  // from "an admin already decided to take this down."
   if (updated.reportCount >= AUTO_HIDE_REPORT_THRESHOLD && !updated.isDisabled) {
-    await SurpriseCard.updateOne({ _id: updated._id }, { $set: { isDisabled: true, pendingReview: true } });
+    const log = updated.reportLog || [];
+    const windowMs = log.length >= 2 ? log[log.length - 1].at.getTime() - log[0].at.getTime() : 0;
+    const distinctRanges = new Set(log.map((entry) => entry.range)).size;
+
+    if (windowMs >= AUTO_HIDE_MIN_WINDOW_MS && distinctRanges >= AUTO_HIDE_MIN_DISTINCT_RANGES) {
+      await SurpriseCard.updateOne({ _id: updated._id }, { $set: { isDisabled: true, pendingReview: true } });
+    }
   }
 
   res.json({ success: true });

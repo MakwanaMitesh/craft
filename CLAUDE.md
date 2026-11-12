@@ -591,6 +591,7 @@ Every save on every tab calls `logAdminAction` (audit log) and redirects back to
 | `APP_NAME` | Fallback app name if Settings → siteName isn't set. |
 | `BASE_URL` | Full public URL (no trailing slash) — used for share links, QR codes, OG tags, email links. |
 | `MONGO_URI` | MongoDB connection string. |
+| `TRUST_PROXY_HOPS` | How many reverse-proxy hops Express trusts for the real client IP (`app.set('trust proxy', ...)`). **Security-critical, not just a networking detail** — get it wrong and either IP-based rate limiting/report-abuse logic (§16) becomes spoofable (set too high with no real proxy in front) or becomes shared across all visitors behind one proxy IP (set too low with a real proxy in front). `0` = no reverse proxy at all; `1` = exactly one (a single Nginx box, or most single-layer hosting platforms); `2+` = a CDN in front of another proxy/LB. Defaults to `1` if unset, matching this app's previous hardcoded value — verify that's actually true for your deployment, don't assume it. |
 | `SESSION_SECRET` | Signs the session cookie. |
 | `ENCRYPTION_KEY` | Encrypts Razorpay/SMTP secrets at rest in Settings. Falls back to `SESSION_SECRET` if unset — set a dedicated value in production. |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Razorpay API credentials — fallback only; the admin Settings → Payments value always wins when set. |

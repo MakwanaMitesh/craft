@@ -40,6 +40,14 @@ const surpriseCardSchema = new mongoose.Schema(
     // caps reportCount's growth at one per IP per card, independent of the
     // separate per-IP-per-hour rate limit on the endpoint itself.
     reportedIpHashes: [{ type: String }],
+    // One entry per counted report (same length as reportedIpHashes, same
+    // order) — lets the auto-hide check in reportSurpriseCard require the
+    // reports to be spread over a real time window and across more than
+    // one coarse IP range, instead of firing on an instant scripted burst
+    // of spoofed addresses. `range` is a coarse bucket (first two IPv4
+    // octets), never the full IP — good enough to say "probably not the
+    // same actor," not precise enough to be itself a privacy concern.
+    reportLog: [{ at: Date, range: String, _id: false }],
     // Set automatically (not by an admin — see reportSurpriseCard) once
     // reportCount reaches the auto-hide threshold, alongside isDisabled.
     // Separate from isDisabled so the admin UI can distinguish "an admin

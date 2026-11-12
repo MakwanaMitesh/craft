@@ -23,13 +23,32 @@ const { scheduleExpiryCron } = require('./jobs/expiryCron');
 const app = express();
 
 // Required whenever this app sits behind a reverse proxy (Nginx, Render,
-// Railway, etc — see DEPLOYMENT.md) so Express reads the real client IP and
-// protocol from X-Forwarded-* headers instead of the proxy's own loopback
-// connection. Without this, per-IP rate limiting is useless (every request
-// appears to come from the proxy) and req.secure is wrong behind TLS-terminating
-// proxies. Harmless with no proxy in front (e.g. local dev) — only applies to
-// a request so close to the app that we can trust the header.
-app.set('trust proxy', 1);
+// Railway, etc) so Express reads the real client IP and protocol from
+// X-Forwarded-* headers instead of the proxy's own loopback connection.
+// Without this, per-IP rate limiting is useless (every request appears to
+// come from the proxy) and req.secure is wrong behind TLS-terminating proxies.
+//
+// This is NOT harmless to get wrong, in either direction:
+//   - Set too high (or left at the default below) with NO real proxy in
+//     front: a client can set X-Forwarded-For to anything it likes and
+//     Express will believe it, making req.ip spoofable — defeating every
+//     IP-based rate limit and the Surprise Cards report/auto-hide logic
+//     (controllers/surpriseCardsController.js). Confirmed directly: with
+//     this set to 1 and no real proxy present, `curl -H "X-Forwarded-For:
+//     1.2.3.4"` makes req.ip report 1.2.3.4.
+//   - Set too low (e.g. 0/false) with a real proxy in front: every
+//     visitor appears to share the proxy's own IP, so rate limits and
+//     per-IP report counting apply collectively to all of them instead of
+//     individually — unrelated users can trip each other's limits.
+// TRUST_PROXY_HOPS must therefore match your actual deployment exactly —
+// see CLAUDE.md's Environment variables table and .env.example for how to
+// count hops (0 = no proxy at all, direct internet exposure; 1 = exactly
+// one reverse proxy/load balancer directly in front of this process; 2+
+// for a CDN-then-LB stack). Defaults to 1 only to preserve this app's
+// previous hardcoded behavior — verify it against your real setup rather
+// than trusting that default.
+const trustProxyHops = process.env.TRUST_PROXY_HOPS !== undefined ? Number(process.env.TRUST_PROXY_HOPS) : 1;
+app.set('trust proxy', trustProxyHops);
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -83,10 +102,12 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 
+let server;
+
 connectDB()
   .then(() => {
     scheduleExpiryCron();
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`${process.env.APP_NAME || 'CelebraCraft'} running on http://localhost:${PORT}`);
     });
   })
@@ -94,3 +115,16 @@ connectDB()
     console.error('Failed to connect to MongoDB:', err.message);
     process.exit(1);
   });
+
+function shutdown() {
+  if (server) {
+    server.close(() => {
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
