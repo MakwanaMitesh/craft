@@ -1121,14 +1121,19 @@ exports.listSurpriseCards = catchAsync(async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const filter = await buildSurpriseCardFilter(req.query);
 
-  const [cards, total] = await Promise.all([
+  const [cards, total, pendingReviewCards] = await Promise.all([
     SurpriseCard.find(filter).sort({ createdAt: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
     SurpriseCard.countDocuments(filter),
+    // Auto-hidden by reportSurpriseCard once reportCount hits the
+    // threshold — always shown up top regardless of the filters/page
+    // above, independent of them, since these need a human look now.
+    SurpriseCard.find({ pendingReview: true }).sort({ reportedAt: -1 }),
   ]);
 
   res.render('admin/surprise-cards', {
     title: 'Surprise cards',
     cards,
+    pendingReviewCards,
     filters: {
       type: req.query.type || 'all',
       search: req.query.search || '',
@@ -1179,6 +1184,9 @@ exports.toggleSurpriseCardDisabled = catchAsync(async (req, res) => {
   if (!card) throw new AppError('Surprise card not found.', 404);
 
   card.isDisabled = !card.isDisabled;
+  // Re-enabling is "review done" regardless of why it was disabled — clears
+  // the auto-hide flag too, not just a manual admin disable.
+  if (!card.isDisabled) card.pendingReview = false;
   await card.save();
 
   logAdminAction(req, card.isDisabled ? 'surprisecard.disable' : 'surprisecard.enable', {

@@ -5,7 +5,7 @@ const surpriseCardsController = require('../controllers/surpriseCardsController'
 const maintenanceGate = require('../middleware/maintenance');
 const dynamicPhotoUpload = require('../middleware/dynamicPhotoUpload');
 const { verifyTokenAfterUpload } = require('../middleware/csrf');
-const { openedLimiter, trackLimiter, cardCreateLimiter } = require('../middleware/rateLimiter');
+const { openedLimiter, trackLimiter, cardCreateLimiter, reportLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -72,7 +72,7 @@ router.get('/c/:slug/results', maintenanceGate, surpriseCardsController.getSurpr
 router.get('/c/:slug/results/live', maintenanceGate, surpriseCardsController.getPuzzleLiveStatus);
 router.post('/c/:slug/opened', maintenanceGate, openedLimiter, publicController.markOpened);
 router.post('/c/:slug/answer', maintenanceGate, openedLimiter, surpriseCardsController.answerSurpriseCard);
-router.post('/c/:slug/report', maintenanceGate, openedLimiter, surpriseCardsController.reportSurpriseCard);
+router.post('/c/:slug/report', maintenanceGate, reportLimiter, surpriseCardsController.reportSurpriseCard);
 router.post('/c/:slug/solve', maintenanceGate, openedLimiter, surpriseCardsController.solvePuzzleCard);
 router.post('/c/:slug/answer-question', maintenanceGate, openedLimiter, surpriseCardsController.answerPuzzleQuestion);
 router.post('/c/:slug/quiz-score', maintenanceGate, openedLimiter, surpriseCardsController.saveFriendshipQuizScore);

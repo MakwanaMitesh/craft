@@ -372,6 +372,35 @@
     // --- Question ---
     const questionText = document.getElementById('questionText');
     let askedOnce = false;
+    let hasAnsweredYes = false;
+
+    // Same reasoning as Apology's answer beacon: this question never
+    // actually forces a "no" (tapping No just asks "are you sure?" and
+    // stays put), so the only answer that's ever final is "yes" — a
+    // "not_yet" is only ever inferred from leaving without tapping it,
+    // sent via sendBeacon on page-hide since a normal fetch can't be
+    // guaranteed to complete after the page is already gone.
+    function sendAnswer(answer, useBeacon) {
+      const payload = JSON.stringify({ answer, _csrf: CSRF_TOKEN });
+      if (useBeacon && navigator.sendBeacon) {
+        navigator.sendBeacon(`/c/${SLUG}/answer`, new Blob([payload], { type: 'application/json' }));
+      } else {
+        fetch(`/c/${SLUG}/answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    }
+
+    function maybeSendNotYet() {
+      if (!hasAnsweredYes) sendAnswer('not_yet', true);
+    }
+    window.addEventListener('pagehide', maybeSendNotYet);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') maybeSendNotYet();
+    });
 
     document.getElementById('annNoBtn').addEventListener('click', () => {
       if (!askedOnce) {
@@ -403,7 +432,11 @@
       showScreenByOrderIndex(currentScreenIndex + 1);
     }
 
-    document.getElementById('annYesBtn').addEventListener('click', goToNextScreen);
+    document.getElementById('annYesBtn').addEventListener('click', () => {
+      hasAnsweredYes = true;
+      sendAnswer('yes', false);
+      goToNextScreen();
+    });
     document.getElementById('storyContinueBtn')?.addEventListener('click', goToNextScreen);
 
     // --- Screen 2: moments fade + slide in as they scroll into view ---

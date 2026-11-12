@@ -35,6 +35,17 @@ const surpriseCardSchema = new mongoose.Schema(
     isReported: { type: Boolean, default: false },
     reportedAt: { type: Date },
     reportCount: { type: Number, default: 0 },
+    // Permanent (not date-scoped, unlike utils/tracking.js's view-uniqueness
+    // hashIp) per-card hashes of IPs that have already reported this card —
+    // caps reportCount's growth at one per IP per card, independent of the
+    // separate per-IP-per-hour rate limit on the endpoint itself.
+    reportedIpHashes: [{ type: String }],
+    // Set automatically (not by an admin — see reportSurpriseCard) once
+    // reportCount reaches the auto-hide threshold, alongside isDisabled.
+    // Separate from isDisabled so the admin UI can distinguish "an admin
+    // chose to disable this" from "the system did, pending a human look" —
+    // re-enabling clears both.
+    pendingReview: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

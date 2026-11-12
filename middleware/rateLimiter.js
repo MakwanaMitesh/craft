@@ -76,4 +76,18 @@ const cardCreateLimiter = rateLimit({
   },
 });
 
-module.exports = { generalLimiter, authLimiter, paymentLimiter, openedLimiter, trackLimiter, cardCreateLimiter };
+// "Report this card" — separate from openedLimiter (which every other free
+// card action uses) since a report is a moderation signal, not a gameplay
+// beacon, and deserves its own tighter ceiling independent of how much
+// someone has already interacted with the card itself.
+const reportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler(req, res) {
+    res.status(429).json({ success: false, message: 'Too many reports from this network. Please try again later.' });
+  },
+});
+
+module.exports = { generalLimiter, authLimiter, paymentLimiter, openedLimiter, trackLimiter, cardCreateLimiter, reportLimiter };

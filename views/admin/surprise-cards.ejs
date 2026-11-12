@@ -2,6 +2,24 @@
 
 <p class="text-sm text-stone-500 mb-4">The free, no-login card system (Apology, Anniversary, Puzzle, Friendship) — separate from the paid cards above, so there's no occasion/status/plan to filter by here.</p>
 
+<% if (pendingReviewCards.length) { %>
+  <div class="card-panel mb-6 border-2 border-red-200 bg-red-50/40">
+    <h3 class="font-semibold mb-3 text-red-700">⚠️ Needs review (<%= pendingReviewCards.length %>)</h3>
+    <p class="text-sm text-stone-500 mb-3">Auto-hidden after 3 or more different people reported them. Re-enabling clears this.</p>
+    <ul class="space-y-2">
+      <% pendingReviewCards.forEach(card => { %>
+        <li class="flex items-center justify-between text-sm bg-white rounded-lg px-3 py-2 border border-red-100">
+          <span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 mr-2"><%= card.type[0].toUpperCase() + card.type.slice(1) %></span>
+            <%= card.recipientName %> &middot; <%= card.reportCount %> report<%= card.reportCount === 1 ? '' : 's' %>
+          </span>
+          <a href="/admin/surprise-cards/<%= card._id %>" class="font-semibold text-amber-700">Review &rarr;</a>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
+<% } %>
+
 <form method="GET" action="/admin/surprise-cards" class="flex flex-wrap items-end gap-3 mb-5">
   <div>
     <label class="label" for="search">Search</label>

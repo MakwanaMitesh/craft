@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const QRCode = require('qrcode');
 const SurpriseCard = require('../models/SurpriseCard');
 const catchAsync = require('../utils/catchAsync');
@@ -78,7 +79,7 @@ exports.viewSurpriseCard = catchAsync(async (req, res) => {
   // system uses — a visitor (or the recipient) has no way to tell the
   // difference, same reasoning as publicController.viewCard's isDisabled check.
   if (!card || card.isDisabled) {
-    return res.status(404).render('public/card-unavailable', { title: 'Card not found' });
+    return res.status(404).render('public/surprise-card-unavailable', { title: 'Card not found' });
   }
 
   if (!card.openedAt) {
@@ -128,7 +129,7 @@ exports.viewSurpriseCard = catchAsync(async (req, res) => {
   }
 
   // No other type exists yet — unreachable with the current SURPRISE_CARD_TYPES enum.
-  return res.status(404).render('public/card-unavailable', { title: 'Card not found' });
+  return res.status(404).render('public/surprise-card-unavailable', { title: 'Card not found' });
 });
 
 // Fired both synchronously (fetch, on a "Yes" tap) and via
@@ -169,13 +170,40 @@ exports.answerSurpriseCard = catchAsync(async (req, res) => {
 // wireReportLink in cardComponents.js). Intentionally has no "undo" and no
 // confirmation beyond the client-side one: this just raises a flag for a
 // human to look at, it doesn't take the card down by itself.
+const AUTO_HIDE_REPORT_THRESHOLD = 3;
+
 exports.reportSurpriseCard = catchAsync(async (req, res) => {
+  // Permanent (no date component, unlike the view-uniqueness hashIp in
+  // utils/tracking.js) so the same IP can never push reportCount up twice
+  // for the same card, regardless of how long ago its first report was.
+  const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex');
+
   const updated = await SurpriseCard.findOneAndUpdate(
-    { slug: req.params.slug },
-    { $set: { isReported: true, reportedAt: new Date() }, $inc: { reportCount: 1 } }
+    { slug: req.params.slug, reportedIpHashes: { $ne: ipHash } },
+    {
+      $set: { isReported: true, reportedAt: new Date() },
+      $inc: { reportCount: 1 },
+      $push: { reportedIpHashes: ipHash },
+    },
+    { new: true }
   );
 
-  if (!updated) return res.status(404).json({ success: false });
+  if (!updated) {
+    // Either no card with this slug exists, or this IP already reported
+    // it — the latter is still a success from the caller's point of view
+    // (the report stands, it just didn't count a second time).
+    const exists = await SurpriseCard.exists({ slug: req.params.slug });
+    return res.status(exists ? 200 : 404).json({ success: Boolean(exists) });
+  }
+
+  // Auto-hide once enough independent IPs have flagged it — distinct from
+  // an admin's own isDisabled toggle (pendingReview marks *why*), so the
+  // admin list can surface "needs a human look" separately from "an admin
+  // already decided to take this down."
+  if (updated.reportCount >= AUTO_HIDE_REPORT_THRESHOLD && !updated.isDisabled) {
+    await SurpriseCard.updateOne({ _id: updated._id }, { $set: { isDisabled: true, pendingReview: true } });
+  }
+
   res.json({ success: true });
 });
 

@@ -11,7 +11,9 @@
       </div>
       <div class="flex gap-1 shrink-0">
         <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600"><%= card.type[0].toUpperCase() + card.type.slice(1) %></span>
-        <% if (card.isDisabled) { %>
+        <% if (card.pendingReview) { %>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-700">⚠️ Pending review</span>
+        <% } else if (card.isDisabled) { %>
           <span class="text-xs font-semibold px-2 py-1 rounded-full bg-stone-200 text-stone-600">Disabled</span>
         <% } %>
         <% if (card.isReported) { %>
@@ -62,8 +64,14 @@
     </dl>
 
   <% } else if (card.type === 'anniversary') { %>
-    <p class="text-sm text-stone-500">This card type doesn't save the recipient's Yes/No tap — it's a navigational step only, nothing is recorded server-side for it yet.</p>
-    <dl class="grid sm:grid-cols-2 gap-3 text-sm mt-3">
+    <dl class="grid sm:grid-cols-2 gap-3 text-sm">
+      <div><dt class="text-stone-400">Answer</dt><dd class="font-semibold">
+        <% if (card.recipientAnswer === 'yes') { %>Said Yes ✨
+        <% } else if (card.recipientAnswer === 'not_yet') { %>Left without answering
+        <% } else { %>No answer yet
+        <% } %>
+      </dd></div>
+      <% if (card.answeredAt) { %><div><dt class="text-stone-400">Answered at</dt><dd class="font-semibold"><%= card.answeredAt.toLocaleString() %></dd></div><% } %>
       <div><dt class="text-stone-400">Together since</dt><dd class="font-semibold"><%= card.fields?.togetherDate ? new Date(card.fields.togetherDate).toLocaleDateString() : '—' %></dd></div>
       <div><dt class="text-stone-400">Anniversary number</dt><dd class="font-semibold"><%= card.fields?.anniversaryNumber || '—' %></dd></div>
       <div><dt class="text-stone-400">Timeline moments</dt><dd class="font-semibold"><%= card.fields?.timeline?.length || 0 %></dd></div>
