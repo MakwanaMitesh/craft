@@ -755,6 +755,28 @@ exports.postFriendshipCreate = catchAsync(async (req, res) => {
   });
 });
 
+// Saves the friendship quiz's final score, once, at the end of Screen 2.
+// A single recipient taking the quiz once in one sitting (no mid-quiz
+// resume exists for this card type, unlike Puzzle) makes a plain
+// overwrite safe here — no atomic "first write wins" guard needed.
+exports.saveFriendshipQuizScore = catchAsync(async (req, res) => {
+  const card = await SurpriseCard.findOne({ slug: req.params.slug, type: 'friendship' }, 'fields.quiz');
+  if (!card) return res.status(404).json({ success: false });
+
+  const total = Array.isArray(card.fields.quiz) ? card.fields.quiz.length : 0;
+  const score = Number(req.body?.score);
+  if (!Number.isInteger(score) || score < 0 || score > total) {
+    return res.status(400).json({ success: false });
+  }
+
+  await SurpriseCard.updateOne(
+    { slug: req.params.slug },
+    { $set: { 'fields.quizResult': { score, total, completedAt: new Date() } } }
+  );
+
+  res.json({ success: true });
+});
+
 // Private, sender-only status page — gated by a secret `key` query param
 // (card.resultsKey), never the public slug alone. Wrong/missing key gets
 // the exact same 404 as a nonexistent card, so a guess can't distinguish

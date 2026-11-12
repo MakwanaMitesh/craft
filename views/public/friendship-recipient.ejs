@@ -71,12 +71,55 @@
 
     .fsr-since { font-size: 14px; opacity: 0.7; margin-top: 0.25rem; }
 
+    /* ===== Screen 2: How Well Do You Know Us? ===== */
+    .fsr-quiz-intro { font-size: 15px; opacity: 0.75; margin-bottom: 0.5rem; }
+    .fsr-quiz-progress {
+      font-family: var(--font-body); font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; opacity: 0.55; margin-bottom: 0.5rem;
+    }
+    .fsr-quiz-question { font-family: var(--font-heading); font-size: clamp(20px, 5.5vw, 26px); max-width: 420px; margin-bottom: 1.25rem; }
+    .fsr-quiz-options { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 360px; }
+    .fsr-quiz-option {
+      font-family: var(--font-body); font-size: 16px; font-weight: 600; text-align: center;
+      padding: 1rem; border-radius: 14px; cursor: pointer; color: var(--cocoa);
+      box-shadow: var(--shadow-soft); transition: transform 150ms var(--ease-soft), box-shadow 150ms var(--ease-soft);
+    }
+    .fsr-quiz-option.fsr-correct { background: #6FCF97 !important; color: #1C3D2B; animation: fsr-opt-bounce 500ms var(--ease-soft); }
+    .fsr-quiz-option.fsr-wrong { animation: fsr-opt-shake 420ms var(--ease-soft); }
+    .fsr-quiz-option.fsr-glow { box-shadow: 0 0 0 4px rgba(111, 207, 151, 0.65), var(--shadow-soft); }
+    .fsr-quiz-option.fsr-disabled { pointer-events: none; opacity: 0.85; }
+    @keyframes fsr-opt-bounce {
+      0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); }
+    }
+    @keyframes fsr-opt-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      50% { transform: translateX(6px); }
+      75% { transform: translateX(-4px); }
+    }
+    .fsr-quiz-feedback { font-weight: 700; font-size: 17px; margin-top: 1rem; min-height: 1.4em; }
+    .fsr-quiz-score-title { margin-bottom: 0.25rem; }
+
+    /* ===== Screen 3: Our Memories ===== */
+    .fsr-washi {
+      position: absolute; width: 46px; height: 16px; opacity: 0.85; z-index: 2;
+    }
+    .fsr-washi-a { top: -8px; left: -6px; background: var(--teal); transform: rotate(-35deg); }
+    .fsr-washi-b { top: -8px; right: -6px; background: var(--pink); transform: rotate(35deg); }
+    .fsr-joke-card { display: flex; align-items: center; justify-content: center; }
+    .fsr-joke-text {
+      font-family: var(--font-hand); font-size: 1.4rem; line-height: 1.3; text-align: center;
+      color: #2B1B12; padding: 0.5rem;
+    }
+    .fsr-memories-hint { font-size: 13px; opacity: 0.55; margin-top: 0.75rem; }
+
     @media (prefers-reduced-motion: reduce) {
       .fsr-avatar-you, .fsr-avatar-friend { animation: none; opacity: 1; }
       .fsr-avatar-you { left: calc(50% - 85px); }
       .fsr-avatar-friend { right: calc(50% - 85px); }
       .fsr-hug-badge { animation: none; opacity: 1; transform: translateX(-50%) scale(1); }
       .theme-friendship .sc-btn:active { animation: none; }
+      .fsr-quiz-option.fsr-correct, .fsr-quiz-option.fsr-wrong { animation: none; }
     }
   </style>
 </head>
@@ -105,12 +148,95 @@
 
       <button type="button" class="sc-btn" id="openBtn" style="margin-top: 1.25rem;">Open surprise 🎁</button>
     </div>
+
+    <!-- SCREEN 2: How Well Do You Know Us? (only rendered when there's at least one quiz question) -->
+    <% if (card.fields.quiz && card.fields.quiz.length) { %>
+      <div class="sc-screen" id="screen-quiz">
+        <div id="quizArea" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+          <p class="fsr-quiz-intro">Let's see how well you know us 😏</p>
+          <p class="fsr-quiz-progress" id="quizProgress"></p>
+          <p class="fsr-quiz-question" id="quizQuestion"></p>
+          <div class="fsr-quiz-options" id="quizOptions"></div>
+          <p class="fsr-quiz-feedback" id="quizFeedback"></p>
+        </div>
+
+        <div id="quizScoreArea" style="display: none; text-align: center;">
+          <h2 class="fsr-quiz-score-title" id="quizScoreTitle"></h2>
+          <p class="sc-body" id="quizScoreLine"></p>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- SCREEN 3: Our Memories (only rendered when there's at least one photo or inside joke) -->
+    <%
+      const fsrPhotos = card.photos || [];
+      const fsrJokes = card.fields.insideJokes || [];
+      const fsrMemoryItems = [];
+      const fsrJokeColors = ['#FFD166', '#F4A261', '#8ECAE6', '#F7A8C4'];
+      for (let i = 0; i < Math.max(fsrPhotos.length, fsrJokes.length); i++) {
+        if (fsrPhotos[i]) fsrMemoryItems.push({ type: 'photo', content: fsrPhotos[i] });
+        if (fsrJokes[i]) fsrMemoryItems.push({ type: 'joke', content: fsrJokes[i] });
+      }
+    %>
+    <% if (fsrMemoryItems.length) { %>
+      <div class="sc-screen" id="screen-memories">
+        <h2 class="sc-h2">Our Memories</h2>
+        <div class="sc-polaroid-stack" id="memoriesStack">
+          <% fsrMemoryItems.forEach((item, i) => { %>
+            <% if (item.type === 'photo') { %>
+              <div class="sc-polaroid">
+                <span class="fsr-washi fsr-washi-a"></span>
+                <span class="fsr-washi fsr-washi-b"></span>
+                <img src="<%= item.content %>" alt="" />
+              </div>
+            <% } else { %>
+              <div class="sc-polaroid fsr-joke-card" style="background: <%= fsrJokeColors[i % fsrJokeColors.length] %>;">
+                <p class="fsr-joke-text"><%= item.content %></p>
+              </div>
+            <% } %>
+          <% }) %>
+        </div>
+        <p class="fsr-memories-hint">Tap or swipe to see them all</p>
+        <button type="button" class="sc-btn" id="memoriesNextBtn" style="margin-top: 1rem;">One more thing →</button>
+      </div>
+    <% } %>
   </div>
 
   <script src="/js/cardComponents.js"></script>
   <script>
     const S = window.SurpriseCard;
+    const SLUG = <%- JSON.stringify(card.slug) %>;
+    const CSRF_TOKEN = <%- JSON.stringify(csrfToken) %>;
+    const QUIZ = <%- JSON.stringify(card.fields.quiz || []) %>;
+    const HAS_MEMORIES = <%- JSON.stringify(fsrMemoryItems.length > 0) %>;
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     const screens = S.createScreenContainer(document.querySelector('.sc-screen-container'));
+
+    // Screens are skipped entirely (not just emptied) when there's nothing
+    // for them to show — same skip-aware navigation pattern Anniversary
+    // uses for its optional timeline/love-lines screens — since a plain
+    // linear screens.next() would otherwise land on a dead "Our Memories"
+    // screen with zero photos and zero jokes, or a quiz screen with no
+    // questions.
+    const screenOrder = ['screen-hey'];
+    if (QUIZ.length) screenOrder.push('screen-quiz');
+    if (HAS_MEMORIES) screenOrder.push('screen-memories');
+    const screenIndexById = {};
+    screenOrder.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el) screenIndexById[id] = screens.screens.indexOf(el);
+    });
+    let currentOrderIndex = 0;
+
+    function goToNextScreen() {
+      currentOrderIndex += 1;
+      if (currentOrderIndex >= screenOrder.length) return; // nothing built past this yet
+      const id = screenOrder[currentOrderIndex];
+      screens.goTo(screenIndexById[id]);
+      if (id === 'screen-quiz') startQuiz();
+      if (id === 'screen-memories') startMemories();
+    }
 
     S.startFloatingEmojis(document.getElementById('emojiLayer'), {
       emojis: ['🫂', '💛', '🎈', '✨', '🎉', '🧡'],
@@ -128,16 +254,108 @@
       walksFinished += 1;
       if (walksFinished >= 2) avatarsWrap.classList.add('fsr-hug');
     }
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (prefersReducedMotion) {
       avatarsWrap.classList.add('fsr-hug');
     } else {
       document.getElementById('avatarYou').addEventListener('animationend', onWalkEnd, { once: true });
       document.getElementById('avatarFriend').addEventListener('animationend', onWalkEnd, { once: true });
     }
 
-    document.getElementById('openBtn').addEventListener('click', () => {
-      screens.next();
-    });
+    document.getElementById('openBtn').addEventListener('click', goToNextScreen);
+
+    // --- SCREEN 2: How Well Do You Know Us? ---
+    const QUIZ_COLORS = ['#FFD166', '#F4A261', '#8ECAE6', '#F7A8C4'];
+    let quizIndex = 0;
+    let quizScore = 0;
+
+    function renderQuizQuestion() {
+      const q = QUIZ[quizIndex];
+      document.getElementById('quizProgress').textContent = `Question ${quizIndex + 1} of ${QUIZ.length}`;
+      document.getElementById('quizQuestion').textContent = q.question;
+      document.getElementById('quizFeedback').textContent = '';
+
+      const optionsEl = document.getElementById('quizOptions');
+      optionsEl.innerHTML = '';
+      q.options.forEach((option, i) => {
+        const card = document.createElement('div');
+        card.className = 'fsr-quiz-option';
+        card.style.background = QUIZ_COLORS[i % QUIZ_COLORS.length];
+        card.textContent = option;
+        card.addEventListener('click', () => answerQuiz(i));
+        optionsEl.appendChild(card);
+      });
+    }
+
+    function answerQuiz(chosenIndex) {
+      const q = QUIZ[quizIndex];
+      const optionEls = Array.from(document.getElementById('quizOptions').children);
+      optionEls.forEach((el) => el.classList.add('fsr-disabled'));
+
+      const feedback = document.getElementById('quizFeedback');
+      if (chosenIndex === q.correctIndex) {
+        quizScore += 1;
+        optionEls[chosenIndex].classList.add('fsr-correct');
+        feedback.textContent = 'Yesss! 🎉';
+        feedback.style.color = '#2E7D52';
+      } else {
+        optionEls[chosenIndex].classList.add('fsr-wrong');
+        optionEls[q.correctIndex].classList.add('fsr-glow');
+        feedback.textContent = 'Oops! 😂';
+        feedback.style.color = '#C9790C'; // warm amber, deliberately not red
+      }
+
+      setTimeout(() => {
+        quizIndex += 1;
+        if (quizIndex >= QUIZ.length) {
+          finishQuiz();
+        } else {
+          renderQuizQuestion();
+        }
+      }, 1300);
+    }
+
+    function finishQuiz() {
+      document.getElementById('quizArea').style.display = 'none';
+      const total = QUIZ.length;
+      let title;
+      if (quizScore === total) title = 'Certified Bestie 🏆';
+      else if (quizScore > total / 2) title = 'Pretty good bestie 😎';
+      else title = 'We need more hangouts 😂';
+
+      document.getElementById('quizScoreTitle').textContent = title;
+      document.getElementById('quizScoreLine').textContent = `You got ${quizScore}/${total}!`;
+      document.getElementById('quizScoreArea').style.display = 'block';
+      S.burstConfetti({ colors: ['#F4A261', '#FFD166', '#8ECAE6', '#F7A8C4'] });
+
+      fetch(`/c/${SLUG}/quiz-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+        body: JSON.stringify({ score: quizScore, _csrf: CSRF_TOKEN }),
+        keepalive: true,
+      }).catch(() => {});
+
+      setTimeout(goToNextScreen, 2200);
+    }
+
+    function startQuiz() {
+      quizIndex = 0;
+      quizScore = 0;
+      document.getElementById('quizArea').style.display = 'flex';
+      document.getElementById('quizScoreArea').style.display = 'none';
+      renderQuizQuestion();
+    }
+
+    // --- SCREEN 3: Our Memories ---
+    function startMemories() {
+      const stack = document.getElementById('memoriesStack');
+      if (stack && !stack.dataset.wired) {
+        S.createPhotoPolaroids(stack);
+        stack.dataset.wired = 'true';
+      }
+    }
+
+    const memoriesNextBtn = document.getElementById('memoriesNextBtn');
+    if (memoriesNextBtn) memoriesNextBtn.addEventListener('click', goToNextScreen);
   </script>
 </body>
 </html>

@@ -74,6 +74,7 @@ router.post('/c/:slug/opened', maintenanceGate, openedLimiter, publicController.
 router.post('/c/:slug/answer', maintenanceGate, openedLimiter, surpriseCardsController.answerSurpriseCard);
 router.post('/c/:slug/solve', maintenanceGate, openedLimiter, surpriseCardsController.solvePuzzleCard);
 router.post('/c/:slug/answer-question', maintenanceGate, openedLimiter, surpriseCardsController.answerPuzzleQuestion);
+router.post('/c/:slug/quiz-score', maintenanceGate, openedLimiter, surpriseCardsController.saveFriendshipQuizScore);
 router.post('/c/:slug/progress', maintenanceGate, trackLimiter, surpriseCardsController.recordPuzzleProgress);
 router.post('/api/cards/:slug/respond', maintenanceGate, openedLimiter, publicController.respondToProposal);
 router.post('/api/track', maintenanceGate, trackLimiter, trackingController.track);
