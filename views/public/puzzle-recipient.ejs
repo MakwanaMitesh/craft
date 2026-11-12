@@ -170,6 +170,7 @@
   </style>
 </head>
 <body class="sc-root theme-puzzle">
+  <button type="button" class="sc-report-link" id="reportLinkBtn">Report this card</button>
 
   <div class="sc-screen-container">
 
@@ -833,6 +834,8 @@
         progressTimer = startPausableInterval(sendProgress, 5000);
       }
     })();
+
+    S.wireReportLink(document.getElementById('reportLinkBtn'), { slug: SLUG, csrfToken: CSRF_TOKEN });
   </script>
 </body>
 </html>

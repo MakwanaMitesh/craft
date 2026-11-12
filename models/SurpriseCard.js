@@ -24,6 +24,17 @@ const surpriseCardSchema = new mongoose.Schema(
     // seeing the card itself gives no way to also see the sender's private
     // status page for it.
     resultsKey: { type: String, required: true, default: () => crypto.randomBytes(16).toString('hex') },
+
+    // Admin moderation — mirrors Card.isDisabled's "kill-switch independent
+    // of any other state" shape, since these cards have no status/expiresAt
+    // of their own to piggyback on.
+    isDisabled: { type: Boolean, default: false },
+    // Set by the recipient-facing "Report this card" link (see
+    // surpriseCardsController.reportSurpriseCard) — a lightweight flag for
+    // the admin list, not a moderation queue of its own.
+    isReported: { type: Boolean, default: false },
+    reportedAt: { type: Date },
+    reportCount: { type: Number, default: 0 },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

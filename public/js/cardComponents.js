@@ -301,6 +301,32 @@
     }
   }
 
+  // --- 9. ReportLink ---
+  // A small, unobtrusive "Report this card" link shown on every free card
+  // type's recipient page. Confirms once, then disables itself — there's no
+  // undo on the server side either, since this only raises a flag for an
+  // admin to look at, it doesn't take the card down by itself.
+  function wireReportLink(linkEl, { slug, csrfToken }) {
+    linkEl.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (linkEl.dataset.reported) return;
+      if (!window.confirm('Report this card to the site admins?')) return;
+
+      try {
+        await fetch(`/c/${slug}/report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ _csrf: csrfToken }),
+        });
+      } catch {
+        // Best-effort — there's nothing more useful to do client-side if
+        // this particular request fails than to just let them try again.
+      }
+      linkEl.dataset.reported = 'true';
+      linkEl.textContent = 'Reported — thanks';
+    });
+  }
+
   global.SurpriseCard = {
     createScreenContainer,
     wireTapToContinue,
@@ -312,5 +338,6 @@
     createPhotoPolaroids,
     createSoundToggle,
     wireShareScreen,
+    wireReportLink,
   };
 })(window);

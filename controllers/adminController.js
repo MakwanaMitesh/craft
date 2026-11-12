@@ -11,10 +11,12 @@ const PageView = require('../models/PageView');
 const AuditLog = require('../models/AuditLog');
 const Setting = require('../models/Setting');
 const Review = require('../models/Review');
+const SurpriseCard = require('../models/SurpriseCard');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const { storeImage } = require('../utils/mediaStorage');
 const { OCCASIONS } = require('../utils/occasions');
+const { SURPRISE_CARD_TYPES } = require('../utils/surpriseCardTypes');
 const { logAdminAction } = require('../utils/auditLog');
 const { sendCsv } = require('../utils/csv');
 const { generateResetToken, hashToken } = require('../utils/tokens');
@@ -1082,6 +1084,121 @@ exports.deleteCard = catchAsync(async (req, res) => {
 
   req.session.flash = { type: 'success', message: 'Card deleted.' };
   res.redirect('/admin/cards');
+});
+
+// Interactive Surprise Cards — the free, no-login system (CLAUDE.md §16),
+// kept in this same file rather than a separate controller, matching how
+// every other admin domain already lives here. No occasion/status/plan to
+// filter on (none of that exists for this system) — just type, a reported
+// flag, a date range, and a name/slug search.
+async function buildSurpriseCardFilter(query) {
+  const filter = {};
+  if (query.type && query.type !== 'all') filter.type = query.type;
+  if (query.reported === 'true') filter.isReported = true;
+  if (query.dateFrom || query.dateTo) {
+    filter.createdAt = {};
+    if (query.dateFrom) filter.createdAt.$gte = new Date(query.dateFrom);
+    if (query.dateTo) {
+      const end = new Date(query.dateTo);
+      end.setHours(23, 59, 59, 999);
+      filter.createdAt.$lte = end;
+    }
+  }
+
+  const search = (query.search || '').trim();
+  if (search) {
+    filter.$or = [
+      { recipientName: new RegExp(search, 'i') },
+      { senderName: new RegExp(search, 'i') },
+      { slug: new RegExp(search, 'i') },
+    ];
+  }
+
+  return filter;
+}
+
+exports.listSurpriseCards = catchAsync(async (req, res) => {
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const filter = await buildSurpriseCardFilter(req.query);
+
+  const [cards, total] = await Promise.all([
+    SurpriseCard.find(filter).sort({ createdAt: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    SurpriseCard.countDocuments(filter),
+  ]);
+
+  res.render('admin/surprise-cards', {
+    title: 'Surprise cards',
+    cards,
+    filters: {
+      type: req.query.type || 'all',
+      search: req.query.search || '',
+      dateFrom: req.query.dateFrom || '',
+      dateTo: req.query.dateTo || '',
+      reported: req.query.reported || '',
+    },
+    page,
+    totalPages: Math.max(Math.ceil(total / PAGE_SIZE), 1),
+    total,
+    SURPRISE_CARD_TYPES,
+  });
+});
+
+exports.exportSurpriseCardsCsv = catchAsync(async (req, res) => {
+  const filter = await buildSurpriseCardFilter(req.query);
+  const cards = await SurpriseCard.find(filter).sort({ createdAt: -1 });
+
+  sendCsv(
+    res,
+    `surprise-cards-${Date.now()}.csv`,
+    ['Slug', 'Type', 'Sender', 'Recipient', 'Opened', 'Reported', 'Disabled', 'Created'],
+    cards.map((c) => [
+      c.slug,
+      c.type,
+      c.senderName,
+      c.recipientName,
+      c.openedAt ? c.openedAt.toISOString() : '',
+      c.isReported ? 'yes' : 'no',
+      c.isDisabled ? 'yes' : 'no',
+      c.createdAt.toISOString(),
+    ])
+  );
+});
+
+exports.getSurpriseCardDetail = catchAsync(async (req, res) => {
+  const card = await SurpriseCard.findById(req.params.id);
+  if (!card) throw new AppError('Surprise card not found.', 404);
+
+  res.render('admin/surprise-card-detail', {
+    title: card.recipientName || card.slug,
+    card,
+  });
+});
+
+exports.toggleSurpriseCardDisabled = catchAsync(async (req, res) => {
+  const card = await SurpriseCard.findById(req.params.id);
+  if (!card) throw new AppError('Surprise card not found.', 404);
+
+  card.isDisabled = !card.isDisabled;
+  await card.save();
+
+  logAdminAction(req, card.isDisabled ? 'surprisecard.disable' : 'surprisecard.enable', {
+    targetType: 'SurpriseCard',
+    targetId: card._id,
+    details: { slug: card.slug },
+  });
+
+  req.session.flash = { type: 'success', message: `Card ${card.isDisabled ? 'disabled' : 'enabled'}.` };
+  res.redirect(`/admin/surprise-cards/${card._id}`);
+});
+
+exports.deleteSurpriseCard = catchAsync(async (req, res) => {
+  const card = await SurpriseCard.findByIdAndDelete(req.params.id);
+  if (!card) throw new AppError('Surprise card not found.', 404);
+
+  logAdminAction(req, 'surprisecard.delete', { targetType: 'SurpriseCard', targetId: card._id, details: { slug: card.slug } });
+
+  req.session.flash = { type: 'success', message: 'Card deleted.' };
+  res.redirect('/admin/surprise-cards');
 });
 
 // Settings now lives in controllers/settingsController.js (9 tabs' worth of

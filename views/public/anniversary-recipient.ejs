@@ -160,6 +160,7 @@
   </style>
 </head>
 <body class="sc-root theme-anniversary">
+  <button type="button" class="sc-report-link" id="reportLinkBtn">Report this card</button>
   <div class="ann-frame"></div>
 
   <div class="sc-screen-container">
@@ -257,6 +258,8 @@
   <script src="/js/cardComponents.js"></script>
   <script>
     const S = window.SurpriseCard;
+    const SLUG = <%- JSON.stringify(card.slug) %>;
+    const CSRF_TOKEN = <%- JSON.stringify(csrfToken) %>;
 
     // A per-second interval is wasted work (and a real battery drain on a
     // phone) while the tab/app isn't even visible — pause it entirely in
@@ -522,6 +525,8 @@
     }
 
     document.getElementById('reliveBtn').addEventListener('click', () => location.reload());
+
+    S.wireReportLink(document.getElementById('reportLinkBtn'), { slug: SLUG, csrfToken: CSRF_TOKEN });
   </script>
 </body>
 </html>

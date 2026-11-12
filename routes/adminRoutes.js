@@ -97,6 +97,13 @@ router.post('/cards/:id/extend-expiry', adminController.extendCardExpiry);
 router.post('/cards/:id/toggle-disable', adminController.toggleCardDisabled);
 router.post('/cards/:id/delete', adminController.deleteCard);
 
+// Surprise Cards (free, no-login system — see CLAUDE.md §16)
+router.get('/surprise-cards', adminController.listSurpriseCards);
+router.get('/surprise-cards/export.csv', adminController.exportSurpriseCardsCsv);
+router.get('/surprise-cards/:id', adminController.getSurpriseCardDetail);
+router.post('/surprise-cards/:id/toggle-disable', adminController.toggleSurpriseCardDisabled);
+router.post('/surprise-cards/:id/delete', adminController.deleteSurpriseCard);
+
 // Reviews
 router.get('/reviews', adminController.listReviews);
 router.get('/reviews/export.csv', adminController.exportReviewsCsv);

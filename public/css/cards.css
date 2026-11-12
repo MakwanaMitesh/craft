@@ -314,6 +314,23 @@
 }
 .sc-qr-box img { display: block; width: 160px; height: 160px; }
 
+/* --- ReportLink --- */
+.sc-report-link {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 40;
+  font-size: 11px;
+  color: var(--cocoa);
+  opacity: 0.4;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+}
+.sc-report-link:hover { opacity: 0.8; }
+
 /* --- Reduced motion: every animation/transition above collapses to an
    instant, no-motion state instead of being removed entirely, so content
    still appears (just without the movement). --- */

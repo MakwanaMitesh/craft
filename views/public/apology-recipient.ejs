@@ -229,6 +229,7 @@
   </style>
 </head>
 <body class="sc-root theme-apology">
+  <button type="button" class="sc-report-link" id="reportLinkBtn">Report this card</button>
 
   <div class="sc-screen-container">
     <!-- ===== Screen 1: The Knock ===== -->
@@ -501,6 +502,8 @@
     document.getElementById('readAgainBtn').addEventListener('click', () => {
       location.reload();
     });
+
+    S.wireReportLink(document.getElementById('reportLinkBtn'), { slug: SLUG, csrfToken: CSRF_TOKEN });
   </script>
 </body>
 </html>

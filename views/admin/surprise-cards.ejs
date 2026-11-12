@@ -1,0 +1,96 @@
+<%- include('../layouts/dashboard-head', { title }) %>
+
+<p class="text-sm text-stone-500 mb-4">The free, no-login card system (Apology, Anniversary, Puzzle, Friendship) — separate from the paid cards above, so there's no occasion/status/plan to filter by here.</p>
+
+<form method="GET" action="/admin/surprise-cards" class="flex flex-wrap items-end gap-3 mb-5">
+  <div>
+    <label class="label" for="search">Search</label>
+    <input class="input-field" type="text" id="search" name="search" value="<%= filters.search %>" placeholder="Recipient, sender, slug" />
+  </div>
+  <div>
+    <label class="label" for="type">Type</label>
+    <select name="type" id="type" class="input-field max-w-[160px]">
+      <option value="all" <%= filters.type === 'all' ? 'selected' : '' %>>All</option>
+      <% SURPRISE_CARD_TYPES.forEach(t => { %>
+        <option value="<%= t %>" <%= filters.type === t ? 'selected' : '' %>><%= t[0].toUpperCase() + t.slice(1) %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label class="label" for="reported">Reported only</label>
+    <select name="reported" id="reported" class="input-field max-w-[140px]">
+      <option value="" <%= filters.reported === '' ? 'selected' : '' %>>All cards</option>
+      <option value="true" <%= filters.reported === 'true' ? 'selected' : '' %>>Reported only</option>
+    </select>
+  </div>
+  <div>
+    <label class="label" for="dateFrom">From</label>
+    <input class="input-field" type="date" id="dateFrom" name="dateFrom" value="<%= filters.dateFrom %>" />
+  </div>
+  <div>
+    <label class="label" for="dateTo">To</label>
+    <input class="input-field" type="date" id="dateTo" name="dateTo" value="<%= filters.dateTo %>" />
+  </div>
+  <button type="submit" class="btn-secondary">Filter</button>
+  <a
+    href="/admin/surprise-cards/export.csv?search=<%= encodeURIComponent(filters.search) %>&type=<%= filters.type %>&reported=<%= filters.reported %>&dateFrom=<%= filters.dateFrom %>&dateTo=<%= filters.dateTo %>"
+    class="btn-primary"
+  >Export CSV</a>
+</form>
+
+<div class="card-panel overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-stone-500 border-b border-amber-100">
+        <th class="py-2 pr-4">Type</th>
+        <th class="py-2 pr-4">Sender</th>
+        <th class="py-2 pr-4">Recipient</th>
+        <th class="py-2 pr-4">Status</th>
+        <th class="py-2 pr-4">Opened</th>
+        <th class="py-2 pr-4">Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% cards.forEach(card => { %>
+        <tr class="border-b border-amber-50">
+          <td class="py-2 pr-4">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-rose-50 text-rose-600">
+              <%= card.type[0].toUpperCase() + card.type.slice(1) %>
+            </span>
+          </td>
+          <td class="py-2 pr-4"><%= card.senderName %></td>
+          <td class="py-2 pr-4"><a href="/admin/surprise-cards/<%= card._id %>" class="font-semibold text-amber-700"><%= card.recipientName %></a></td>
+          <td class="py-2 pr-4">
+            <% if (card.isDisabled) { %>
+              <span class="text-xs font-semibold px-2 py-1 rounded-full bg-stone-200 text-stone-600">disabled</span>
+            <% } %>
+            <% if (card.isReported) { %>
+              <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-50 text-red-600">reported<% if (card.reportCount > 1) { %> (<%= card.reportCount %>)<% } %></span>
+            <% } %>
+            <% if (!card.isDisabled && !card.isReported) { %>
+              <span class="text-xs text-stone-400">—</span>
+            <% } %>
+          </td>
+          <td class="py-2 pr-4"><%= card.openedAt ? card.openedAt.toLocaleDateString() : 'Not opened' %></td>
+          <td class="py-2 pr-4"><%= card.createdAt.toDateString() %></td>
+        </tr>
+      <% }) %>
+      <% if (!cards.length) { %>
+        <tr><td colspan="6" class="py-6 text-center text-stone-500">No surprise cards match this filter.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<% if (totalPages > 1) { %>
+  <div class="flex items-center justify-center gap-2 mt-5">
+    <% for (let p = 1; p <= totalPages; p++) { %>
+      <a
+        href="/admin/surprise-cards?search=<%= encodeURIComponent(filters.search) %>&type=<%= filters.type %>&reported=<%= filters.reported %>&dateFrom=<%= filters.dateFrom %>&dateTo=<%= filters.dateTo %>&page=<%= p %>"
+        class="px-3 py-1.5 rounded-lg text-sm font-semibold <%= p === page ? 'bg-amber-600 text-white' : 'bg-white border border-amber-100 text-stone-600 hover:bg-amber-50' %>"
+      ><%= p %></a>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('../layouts/dashboard-foot') %>

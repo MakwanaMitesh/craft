@@ -74,7 +74,10 @@ function validateApologyInput(body) {
 // matching paid Card for this slug (see routes/publicRoutes.js).
 exports.viewSurpriseCard = catchAsync(async (req, res) => {
   const card = await SurpriseCard.findOne({ slug: req.params.slug });
-  if (!card) {
+  // Same 404 for "doesn't exist" and "admin disabled it" as the paid Card
+  // system uses — a visitor (or the recipient) has no way to tell the
+  // difference, same reasoning as publicController.viewCard's isDisabled check.
+  if (!card || card.isDisabled) {
     return res.status(404).render('public/card-unavailable', { title: 'Card not found' });
   }
 
@@ -158,6 +161,21 @@ exports.answerSurpriseCard = catchAsync(async (req, res) => {
     return res.status(exists ? 200 : 404).json({ success: Boolean(exists) });
   }
 
+  res.json({ success: true });
+});
+
+// Lets the recipient flag a card for admin review — shown as a small,
+// unobtrusive link on every free card type's recipient page (see
+// wireReportLink in cardComponents.js). Intentionally has no "undo" and no
+// confirmation beyond the client-side one: this just raises a flag for a
+// human to look at, it doesn't take the card down by itself.
+exports.reportSurpriseCard = catchAsync(async (req, res) => {
+  const updated = await SurpriseCard.findOneAndUpdate(
+    { slug: req.params.slug },
+    { $set: { isReported: true, reportedAt: new Date() }, $inc: { reportCount: 1 } }
+  );
+
+  if (!updated) return res.status(404).json({ success: false });
   res.json({ success: true });
 });
 
