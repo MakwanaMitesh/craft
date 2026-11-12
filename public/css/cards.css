@@ -194,6 +194,13 @@
   opacity: 0;
   animation: sc-rise linear forwards;
 }
+.sc-emoji {
+  position: absolute;
+  bottom: -40px;
+  opacity: 0;
+  line-height: 1;
+  animation: sc-rise linear forwards;
+}
 @keyframes sc-rise {
   0% { opacity: 0; transform: translateY(0) scale(0.8); }
   10% { opacity: 0.9; }

@@ -117,6 +117,13 @@ exports.viewSurpriseCard = catchAsync(async (req, res) => {
     });
   }
 
+  if (card.type === 'friendship') {
+    return res.render('public/friendship-recipient', {
+      title: `For my best friend, ${card.recipientName} 💛`,
+      card,
+    });
+  }
+
   // No other type exists yet — unreachable with the current SURPRISE_CARD_TYPES enum.
   return res.status(404).render('public/card-unavailable', { title: 'Card not found' });
 });

@@ -102,6 +102,31 @@
     return { stop: () => { stopped = true; clearInterval(timer); } };
   }
 
+  // --- FloatingEmojis (ambient background, shared helper) ---
+  // Like FloatingHearts but for an arbitrary mix of plain-text emoji at
+  // varied sizes/speeds — Friendship's floating 🫂💛🎈✨🎉🧡, and any future
+  // card that wants a similar effect without a dedicated SVG shape.
+  function startFloatingEmojis(layerEl, { emojis = ['✨'], count = 12, intervalMs = 900, speedMultiplier = 1 } = {}) {
+    if (prefersReducedMotion()) return { stop() {} };
+
+    let stopped = false;
+    function spawnOne() {
+      if (stopped) return;
+      const span = document.createElement('span');
+      span.className = 'sc-emoji';
+      span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      span.style.left = `${4 + Math.random() * 92}%`;
+      span.style.fontSize = `${16 + Math.random() * 22}px`;
+      span.style.animationDuration = `${(5 + Math.random() * 3) * speedMultiplier}s`;
+      layerEl.appendChild(span);
+      span.addEventListener('animationend', () => span.remove());
+    }
+
+    for (let i = 0; i < count; i++) setTimeout(spawnOne, i * (intervalMs / count));
+    const timer = setInterval(spawnOne, intervalMs);
+    return { stop: () => { stopped = true; clearInterval(timer); } };
+  }
+
   // --- 4. Confetti ---
   // Thin wrapper around the canvas-confetti CDN library already used by
   // the rest of the site's card engine (views/public/card.ejs) — reused
@@ -265,6 +290,7 @@
     wireTapToContinue,
     startFloatingHearts,
     startFloatingBokeh,
+    startFloatingEmojis,
     burstConfetti,
     createEnvelopeLetter,
     createPhotoPolaroids,
