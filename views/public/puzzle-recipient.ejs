@@ -259,14 +259,53 @@
     const CSRF_TOKEN = <%- JSON.stringify(csrfToken) %>;
     const PHOTO_URL = <%- JSON.stringify(photoUrl) %>;
     const N = <%- JSON.stringify(gridSize) %>;
+    const QUESTIONS = <%- JSON.stringify(card.fields.questions || []) %>;
+    const HIDDEN_MESSAGE = <%- JSON.stringify(card.fields.hiddenMessage) %>;
+    const STORAGE_KEY = `puzzle_${SLUG}`;
     const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const screens = S.createScreenContainer(document.querySelector('.sc-screen-container'));
+    let currentScreenName = 'challenge'; // 'challenge' | 'puzzle' | 'surprise' | 'questions' — tracked only for sessionStorage
 
     document.getElementById('playBtn').addEventListener('click', () => {
       screens.next();
+      currentScreenName = 'puzzle';
       startPuzzle();
     });
+
+    // --- sessionStorage persistence (mid-game refresh) ---
+    // Wrapped in try/catch per spec: private-browsing mode, a full quota, or
+    // a browser with storage disabled must never break the puzzle itself —
+    // progress just won't survive a refresh in that case.
+    function saveState() {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          n: N,
+          screen: currentScreenName,
+          piecesAtSlot,
+          moves,
+          elapsedSeconds,
+          peeks,
+          solved,
+          qIndex,
+        }));
+      } catch (e) {
+        // Nothing to do — persistence is a nice-to-have, not a requirement.
+      }
+    }
+    function loadState() {
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        return data && data.n === N ? data : null; // a mismatched grid size means stale/foreign data — ignore it
+      } catch (e) {
+        return null;
+      }
+    }
+    function clearState() {
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+    }
 
     // --- Board state ---
     const board = document.getElementById('board');
@@ -283,9 +322,10 @@
     let moves = 0;
     let peeks = 0;
     let solved = false;
-    let timerHandle = null;
+    let animating = false; // true for the ~280ms a swap's fly-to-position animation is mid-flight
     let elapsedSeconds = 0;
     let dragSourceSlot = null;
+    let qIndex = 0; // shared with the Screen 4 question flow below, and persisted for restore
 
     function formatTime(total) {
       const m = Math.floor(total / 60);
@@ -364,7 +404,14 @@
     }
 
     function swapTiles(slotA, slotB) {
-      if (solved || slotA === slotB) return;
+      // The `animating` guard matters for fast tapping/dragging: without it,
+      // a swap started while a previous one is still mid-flight would read
+      // tile positions via getBoundingClientRect() while they're visually
+      // displaced by the in-flight transform, and the two swaps' setTimeout
+      // callbacks could land out of order — either way, piecesAtSlot ends up
+      // wrong. Simplest fix is to just not start a new swap until the last
+      // one has fully settled.
+      if (solved || animating || slotA === slotB) return;
       const elA = tileEls[slotA];
       const elB = tileEls[slotB];
       moves += 1;
@@ -378,6 +425,7 @@
         return;
       }
 
+      animating = true;
       const rectA = elA.getBoundingClientRect();
       const rectB = elB.getBoundingClientRect();
       const dx = rectB.left - rectA.left;
@@ -399,17 +447,19 @@
         requestAnimationFrame(() => {
           [elA, elB].forEach((el) => { el.style.transition = ''; });
         });
+        animating = false;
         afterSwap();
       }, 280);
     }
 
     function afterSwap() {
+      saveState();
       if (piecesAtSlot.every((piece, slot) => piece === slot)) handleSolved();
     }
 
     function wireTile(tile, slot) {
       tile.addEventListener('click', () => {
-        if (solved) return;
+        if (solved || animating) return;
         if (selectedSlot === null) {
           selectedSlot = slot;
           tile.classList.add('pzr-selected');
@@ -434,6 +484,11 @@
           dragSourceSlot = null;
         }
       });
+      // Dragging a tile off the board (or anywhere with no valid drop
+      // target) fires 'dragend' on the source with no matching 'drop'
+      // ever having fired, which would otherwise leave dragSourceSlot
+      // pointing at a stale tile for the *next*, unrelated drag-drop.
+      tile.addEventListener('dragend', () => { dragSourceSlot = null; });
     }
 
     function shuffleBoard() {
@@ -453,12 +508,14 @@
       gameActions.style.display = '';
       solvedText.style.display = 'none';
       document.getElementById('lockIcon2').textContent = '🔒';
+      saveState();
     }
 
     shuffleBtn.addEventListener('click', resetGame);
 
     peekBtn.addEventListener('click', () => {
       peeks += 1;
+      saveState();
       peekOverlay.classList.add('pzr-peek-visible');
       peekBtn.disabled = true;
       setTimeout(() => {
@@ -489,6 +546,7 @@
       document.getElementById('solvedHeadline').textContent = `You did it! 🎉 Solved in ${moves} moves and ${formatTime(elapsedSeconds)}`;
       gameActions.style.display = 'none';
       setTimeout(() => { solvedText.style.display = 'block'; }, 900);
+      saveState();
 
       // Save stats immediately, independent of whether they ever tap
       // "Unlock my surprise" — an abandoned card should still count as solved.
@@ -502,6 +560,8 @@
 
     document.getElementById('unlockBtn').addEventListener('click', () => {
       screens.next();
+      currentScreenName = 'surprise';
+      saveState();
       startSurpriseScreen();
     });
 
@@ -526,13 +586,12 @@
       pausableTimer = startPausableInterval(() => {
         elapsedSeconds += 1;
         updateStatsLine();
+        saveState();
       }, 1000);
       progressTimer = startPausableInterval(sendProgress, 5000);
     }
 
     // --- SCREEN 3: The Surprise ---
-    const QUESTIONS = <%- JSON.stringify(card.fields.questions || []) %>;
-    const HIDDEN_MESSAGE = <%- JSON.stringify(card.fields.hiddenMessage) %>;
     const revealMessageEl = document.getElementById('revealMessage');
     const revealSignatureEl = document.getElementById('revealSignature');
     let surpriseStarted = false;
@@ -578,26 +637,46 @@
     }
 
     // --- SCREEN 4: Questions (one at a time, skipped entirely if none) ---
+    // The DOM lookups and the function bindings are declared unconditionally
+    // (not nested inside `if (QUESTIONS.length)`) so the restore-on-load
+    // logic further down can always reference renderQuestion by name — a
+    // plain `function` declared inside an `if` block only reliably becomes
+    // callable outside it under legacy sloppy-mode semantics, which this
+    // avoids needing at all. getElementById simply returns null for
+    // elements EJS never rendered when there are no questions.
+    const questionsNextBtn = document.getElementById('questionsNextBtn');
+    const questionArea = document.getElementById('questionArea');
+    const qSentArea = document.getElementById('qSentArea');
+    const qProgress = document.getElementById('qProgress');
+    const qText = document.getElementById('qText');
+    const qAnswerArea = document.getElementById('qAnswerArea');
+    let renderQuestion = () => {};
     let resetQuestionsFlow = () => {};
-    if (QUESTIONS.length) {
-      const questionsNextBtn = document.getElementById('questionsNextBtn');
-      const questionArea = document.getElementById('questionArea');
-      const qSentArea = document.getElementById('qSentArea');
-      const qProgress = document.getElementById('qProgress');
-      const qText = document.getElementById('qText');
-      const qAnswerArea = document.getElementById('qAnswerArea');
-      let qIndex = 0;
 
-      function saveAnswer(index, answer) {
+    if (QUESTIONS.length) {
+      const saveAnswer = (index, answer) => {
         fetch(`/c/${SLUG}/answer-question`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
           body: JSON.stringify({ questionIndex: index, answer, _csrf: CSRF_TOKEN }),
           keepalive: true,
         }).catch(() => {});
-      }
+      };
 
-      function renderQuestion() {
+      const submitAnswer = (answer) => {
+        saveAnswer(qIndex, answer);
+        qIndex += 1;
+        saveState();
+        if (qIndex >= QUESTIONS.length) {
+          questionArea.style.display = 'none';
+          qSentArea.style.display = 'block';
+          S.startFloatingHearts(document.getElementById('qHeartsLayer'), { color: '#F28C7A', count: 8 });
+        } else {
+          renderQuestion();
+        }
+      };
+
+      renderQuestion = () => {
         const q = QUESTIONS[qIndex];
         qProgress.textContent = `${qIndex + 1} of ${QUESTIONS.length}`;
         qText.textContent = q.text;
@@ -619,11 +698,11 @@
           const wrap = document.createElement('div');
           wrap.className = 'pzr-q-options';
           (q.options || []).forEach((option) => {
-            const card = document.createElement('div');
-            card.className = 'pzr-q-option-card';
-            card.textContent = option;
-            card.addEventListener('click', () => submitAnswer(option));
-            wrap.appendChild(card);
+            const optionCard = document.createElement('div');
+            optionCard.className = 'pzr-q-option-card';
+            optionCard.textContent = option;
+            optionCard.addEventListener('click', () => submitAnswer(option));
+            wrap.appendChild(optionCard);
           });
           qAnswerArea.appendChild(wrap);
         } else {
@@ -650,22 +729,12 @@
           wrap.appendChild(sendBtn);
           qAnswerArea.appendChild(wrap);
         }
-      }
-
-      function submitAnswer(answer) {
-        saveAnswer(qIndex, answer);
-        qIndex += 1;
-        if (qIndex >= QUESTIONS.length) {
-          questionArea.style.display = 'none';
-          qSentArea.style.display = 'block';
-          S.startFloatingHearts(document.getElementById('qHeartsLayer'), { color: '#F28C7A', count: 8 });
-        } else {
-          renderQuestion();
-        }
-      }
+      };
 
       questionsNextBtn.addEventListener('click', () => {
         screens.next();
+        currentScreenName = 'questions';
+        saveState();
         renderQuestion();
       });
 
@@ -679,13 +748,17 @@
 
     // --- Final buttons: replay the puzzle from scratch ---
     const puzzleScreenIndex = screens.screens.indexOf(document.getElementById('screen-puzzle'));
+    const surpriseScreenIndex = screens.screens.indexOf(document.getElementById('screen-surprise'));
+    const questionsScreenIndex = screens.screens.indexOf(document.getElementById('screen-questions'));
     const finalButtonsEl = document.getElementById('finalButtons');
     function playAgain() {
+      clearState();
       surpriseStarted = false;
       revealMessageEl.textContent = '';
       revealSignatureEl.classList.remove('pzr-visible');
       if (finalButtonsEl) finalButtonsEl.style.display = 'none';
       resetQuestionsFlow();
+      currentScreenName = 'puzzle';
       screens.goTo(puzzleScreenIndex);
       startPuzzle();
     }
@@ -693,6 +766,73 @@
     if (playAgainBtn1) playAgainBtn1.addEventListener('click', playAgain);
     const playAgainBtn2 = document.getElementById('playAgainBtn2');
     if (playAgainBtn2) playAgainBtn2.addEventListener('click', playAgain);
+
+    // --- Restore progress after a mid-game refresh ---
+    (function restoreProgress() {
+      const saved = loadState();
+      if (!saved) return;
+
+      moves = saved.moves || 0;
+      elapsedSeconds = saved.elapsedSeconds || 0;
+      peeks = saved.peeks || 0;
+      solved = Boolean(saved.solved);
+      qIndex = saved.qIndex || 0;
+
+      if (saved.screen === 'surprise') {
+        currentScreenName = 'surprise';
+        screens.goTo(surpriseScreenIndex);
+        surpriseStarted = true;
+        revealMessageEl.textContent = HIDDEN_MESSAGE; // skip re-animating the typewriter on restore
+        revealSignatureEl.classList.add('pzr-visible');
+        if (QUESTIONS.length) questionsNextBtn.style.display = '';
+        else if (finalButtonsEl) finalButtonsEl.style.display = '';
+        return;
+      }
+
+      if (saved.screen === 'questions' && QUESTIONS.length) {
+        currentScreenName = 'questions';
+        screens.goTo(questionsScreenIndex);
+        if (qIndex >= QUESTIONS.length) {
+          questionArea.style.display = 'none';
+          qSentArea.style.display = 'block';
+          S.startFloatingHearts(document.getElementById('qHeartsLayer'), { color: '#F28C7A', count: 8 });
+        } else {
+          renderQuestion();
+        }
+        return;
+      }
+
+      // Default: resume (or re-show, if already solved) the puzzle screen
+      // itself — covers saved.screen === 'puzzle' and anything unexpected.
+      currentScreenName = 'puzzle';
+      buildBoard();
+      if (Array.isArray(saved.piecesAtSlot) && saved.piecesAtSlot.length === N * N) {
+        piecesAtSlot = saved.piecesAtSlot;
+        tileEls.forEach((el, slot) => paintTile(el, slot));
+      } else {
+        shuffleBoard();
+      }
+      updateStatsLine();
+      screens.goTo(puzzleScreenIndex);
+
+      if (solved) {
+        // Show the already-solved state without re-sending to /solve
+        // (already recorded) or replaying the confetti/shine.
+        board.classList.add('pzr-solved-board');
+        document.getElementById('lockIcon2').textContent = '🔓';
+        gameActions.style.display = 'none';
+        solvedText.style.display = 'block';
+        document.getElementById('solvedHeadline').textContent =
+          `You did it! 🎉 Solved in ${moves} moves and ${formatTime(elapsedSeconds)}`;
+      } else {
+        pausableTimer = startPausableInterval(() => {
+          elapsedSeconds += 1;
+          updateStatsLine();
+          saveState();
+        }, 1000);
+        progressTimer = startPausableInterval(sendProgress, 5000);
+      }
+    })();
   </script>
 </body>
 </html>
