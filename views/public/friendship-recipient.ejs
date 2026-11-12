@@ -113,6 +113,53 @@
     }
     .fsr-memories-hint { font-size: 13px; opacity: 0.55; margin-top: 0.75rem; }
 
+    /* ===== Screen 4: The Message ===== */
+    .fsr-envelope .sc-envelope-back { background: var(--gold); }
+    .fsr-envelope .sc-envelope-flap { background: color-mix(in srgb, var(--gold) 75%, black); }
+    .fsr-wax-seal {
+      position: absolute; left: 50%; top: 92px; transform: translate(-50%, -50%);
+      width: 40px; height: 40px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff, var(--white-soft));
+      box-shadow: var(--shadow-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; z-index: 2;
+    }
+    .fsr-letter-signed { font-family: var(--font-hand); font-size: 1.3rem; opacity: 0; margin-top: 1rem; transition: opacity 500ms var(--ease-soft); }
+    .fsr-letter-signed.fsr-visible { opacity: 1; }
+
+    .fsr-waving-avatars { display: flex; gap: 1.5rem; margin-top: 1.25rem; opacity: 0; transition: opacity 500ms var(--ease-soft); }
+    .fsr-waving-avatars.fsr-visible { opacity: 1; }
+    .fsr-wave-avatar { position: relative; width: 56px; height: 56px; }
+    .fsr-wave-avatar svg { width: 100%; height: 100%; }
+    .fsr-wave-hand {
+      position: absolute; top: -6px; right: -10px; font-size: 20px;
+      transform-origin: 70% 90%; animation: fsr-wave 1.1s ease-in-out infinite;
+    }
+    @keyframes fsr-wave {
+      0%, 100% { transform: rotate(-12deg); }
+      50% { transform: rotate(18deg); }
+    }
+
+    /* ===== Screen 5: Friendship Badge ===== */
+    .fsr-badge-wrap { position: relative; width: min(70vw, 260px); height: min(70vw, 260px); margin: 0 auto; }
+    .fsr-badge-wrap svg {
+      width: 100%; height: 100%;
+      animation: fsr-badge-spin-in 900ms var(--ease-soft) forwards;
+    }
+    @keyframes fsr-badge-spin-in {
+      0% { transform: rotate(-540deg) scale(0); opacity: 0; }
+      100% { transform: rotate(0deg) scale(1); opacity: 1; }
+    }
+    .fsr-badge-text {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center; pointer-events: none;
+    }
+    .fsr-badge-medal { font-size: 2rem; }
+    .fsr-badge-title { font-family: var(--font-heading); font-weight: 700; font-size: 1.1rem; line-height: 1.15; margin: 0.2rem 0; }
+    .fsr-badge-names { font-family: var(--font-body); font-size: 13px; font-weight: 600; opacity: 0.8; max-width: 80%; }
+    .fsr-save-btn-row { margin-top: 1.5rem; }
+    .fsr-final-buttons { display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; justify-content: center; }
+
     @media (prefers-reduced-motion: reduce) {
       .fsr-avatar-you, .fsr-avatar-friend { animation: none; opacity: 1; }
       .fsr-avatar-you { left: calc(50% - 85px); }
@@ -120,6 +167,8 @@
       .fsr-hug-badge { animation: none; opacity: 1; transform: translateX(-50%) scale(1); }
       .theme-friendship .sc-btn:active { animation: none; }
       .fsr-quiz-option.fsr-correct, .fsr-quiz-option.fsr-wrong { animation: none; }
+      .fsr-wave-hand { animation: none; }
+      .fsr-badge-wrap svg { animation: none; opacity: 1; transform: none; }
     }
   </style>
 </head>
@@ -200,6 +249,57 @@
         <button type="button" class="sc-btn" id="memoriesNextBtn" style="margin-top: 1rem;">One more thing →</button>
       </div>
     <% } %>
+
+    <!-- SCREEN 4: The Message -->
+    <div class="sc-screen" id="screen-letter">
+      <div class="sc-envelope-wrap fsr-envelope" id="fsrEnvelope">
+        <div class="sc-envelope-back"></div>
+        <div class="sc-envelope-flap"></div>
+        <div class="fsr-wax-seal">😊</div>
+      </div>
+      <div class="sc-letter" id="fsrLetterBox" style="position: relative; z-index: 1;">
+        <p class="sc-letter-text" id="fsrLetterText"></p>
+        <p class="fsr-letter-signed" id="fsrLetterSigned">Your bestie forever, <%= card.senderName %> 🫂</p>
+      </div>
+      <div class="fsr-waving-avatars" id="fsrWavingAvatars">
+        <div class="fsr-wave-avatar">
+          <%- include('../partials/friend-avatar-svg', { style: card.fields.youAvatar }) %>
+          <span class="fsr-wave-hand">✋</span>
+        </div>
+        <div class="fsr-wave-avatar">
+          <%- include('../partials/friend-avatar-svg', { style: card.fields.friendAvatar }) %>
+          <span class="fsr-wave-hand">✋</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 5: Friendship Badge -->
+    <div class="sc-screen" id="screen-badge">
+      <div class="fsr-badge-wrap">
+        <svg id="badgeSvg" viewBox="0 0 300 300" width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="150" cy="150" r="145" fill="#FFD166"/>
+          <circle cx="150" cy="150" r="145" fill="none" stroke="#F4A261" stroke-width="10" stroke-dasharray="14 10"/>
+          <path d="M110 260 L94 298 L122 282 Z" fill="#F4A261"/>
+          <path d="M190 260 L206 298 L178 282 Z" fill="#F4A261"/>
+          <circle cx="150" cy="150" r="114" fill="#FFF8F0"/>
+          <circle cx="150" cy="150" r="114" fill="none" stroke="#8ECAE6" stroke-width="4"/>
+        </svg>
+        <div class="fsr-badge-text">
+          <span class="fsr-badge-medal">🏅</span>
+          <p class="fsr-badge-title">Official<br/>Best Friend</p>
+          <p class="fsr-badge-names"><%= card.recipientName %> & <%= card.senderName %></p>
+        </div>
+      </div>
+
+      <div class="fsr-save-btn-row">
+        <button type="button" class="sc-btn sc-btn-outline" id="saveBadgeBtn">Save badge</button>
+      </div>
+
+      <div class="fsr-final-buttons">
+        <button type="button" class="sc-btn" id="watchAgainBtn">Watch again 🔁</button>
+        <a href="/cards/friendship/create" class="sc-btn sc-btn-outline">Make one for your bestie ✨</a>
+      </div>
+    </div>
   </div>
 
   <script src="/js/cardComponents.js"></script>
@@ -222,6 +322,7 @@
     const screenOrder = ['screen-hey'];
     if (QUIZ.length) screenOrder.push('screen-quiz');
     if (HAS_MEMORIES) screenOrder.push('screen-memories');
+    screenOrder.push('screen-letter', 'screen-badge');
     const screenIndexById = {};
     screenOrder.forEach((id, i) => {
       const el = document.getElementById(id);
@@ -232,10 +333,16 @@
     function goToNextScreen() {
       currentOrderIndex += 1;
       if (currentOrderIndex >= screenOrder.length) return; // nothing built past this yet
-      const id = screenOrder[currentOrderIndex];
+      showScreenByOrderIndex(currentOrderIndex);
+    }
+
+    function showScreenByOrderIndex(orderIndex) {
+      const id = screenOrder[orderIndex];
       screens.goTo(screenIndexById[id]);
       if (id === 'screen-quiz') startQuiz();
       if (id === 'screen-memories') startMemories();
+      if (id === 'screen-letter') startLetterScreen();
+      if (id === 'screen-badge') startBadgeScreen();
     }
 
     S.startFloatingEmojis(document.getElementById('emojiLayer'), {
@@ -356,6 +463,112 @@
 
     const memoriesNextBtn = document.getElementById('memoriesNextBtn');
     if (memoriesNextBtn) memoriesNextBtn.addEventListener('click', goToNextScreen);
+
+    // --- SCREEN 4: The Message ---
+    const LETTER_TEXT = <%- JSON.stringify(card.fields.message) %>;
+    const envelopeWrap = document.getElementById('fsrEnvelope');
+    const letterBox = document.getElementById('fsrLetterBox');
+    const letterTextEl = document.getElementById('fsrLetterText');
+    const letterSignedEl = document.getElementById('fsrLetterSigned');
+    const wavingAvatarsEl = document.getElementById('fsrWavingAvatars');
+
+    let envelopeLetter = S.createEnvelopeLetter({
+      wrapEl: envelopeWrap,
+      letterEl: letterBox,
+      textEl: letterTextEl,
+      text: LETTER_TEXT,
+      onOpen: () => {
+        setTimeout(() => {
+          letterSignedEl.classList.add('fsr-visible');
+          wavingAvatarsEl.classList.add('fsr-visible');
+        }, (LETTER_TEXT.length * 28) + 600); // roughly matches the typewriter's own pace
+      },
+    });
+
+    function startLetterScreen() {
+      // No-op beyond showing the screen — the recipient taps the envelope
+      // themselves to open it, same interaction every other card using
+      // this component already uses.
+    }
+
+    // --- SCREEN 5: Friendship Badge ---
+    function startBadgeScreen() {
+      const svgWrap = document.querySelector('.fsr-badge-wrap svg');
+      svgWrap.style.animation = 'none';
+      void svgWrap.offsetWidth; // force reflow so the spin-in replays from the start
+      svgWrap.style.animation = '';
+    }
+
+    document.getElementById('saveBadgeBtn').addEventListener('click', () => {
+      const svg = document.getElementById('badgeSvg');
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      img.onload = () => {
+        const size = 600;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+
+        // The circle shapes come from the SVG; the text is drawn directly
+        // onto the canvas with a generic system font rather than relying
+        // on Fraunces/DM Sans having loaded inside this standalone
+        // Image — a webfont applied via CSS to the live page doesn't
+        // carry over to a freshly decoded image with no stylesheet of
+        // its own.
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#3E2F2B';
+        ctx.font = '64px serif';
+        ctx.fillText('🏅', size / 2, size * 0.42);
+        ctx.font = 'bold 34px Georgia, serif';
+        ctx.fillText('Official', size / 2, size * 0.52);
+        ctx.fillText('Best Friend', size / 2, size * 0.58);
+        ctx.font = '600 22px Georgia, serif';
+        ctx.globalAlpha = 0.85;
+        ctx.fillText(<%- JSON.stringify(`${card.recipientName} & ${card.senderName}`) %>, size / 2, size * 0.67);
+        ctx.globalAlpha = 1;
+
+        canvas.toBlob((blob) => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'friendship-badge.png';
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        }, 'image/png');
+      };
+      img.src = url;
+    });
+
+    // --- Final buttons ---
+    document.getElementById('watchAgainBtn').addEventListener('click', () => {
+      currentOrderIndex = 0;
+      showScreenByOrderIndex(0);
+
+      // Replay the Screen 1 walk-in/hug (CSS animations with `forwards`
+      // hold their end state, so just removing the class doesn't restart
+      // them — clearing the animation and forcing a reflow does).
+      avatarsWrap.classList.remove('fsr-hug');
+      walksFinished = 0;
+      [document.getElementById('avatarYou'), document.getElementById('avatarFriend')].forEach((el) => {
+        el.style.animation = 'none';
+        void el.offsetWidth;
+        el.style.animation = '';
+      });
+      // Under reduced motion the walk-in never runs, so nothing will ever
+      // fire 'animationend' to re-add the hug state — show it immediately
+      // instead of leaving the avatars permanently un-hugged after a replay.
+      if (prefersReducedMotion) avatarsWrap.classList.add('fsr-hug');
+
+      envelopeLetter.reset();
+      letterSignedEl.classList.remove('fsr-visible');
+      wavingAvatarsEl.classList.remove('fsr-visible');
+    });
   </script>
 </body>
 </html>

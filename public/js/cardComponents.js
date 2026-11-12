@@ -188,7 +188,17 @@
       if (onOpen) onOpen();
     });
 
-    return { isOpen: () => opened };
+    // Lets a "watch again"-style replay reopen the same envelope — without
+    // this, the click listener's own closed-over `opened` flag would
+    // permanently refuse to reopen it a second time in the same page load.
+    function reset() {
+      opened = false;
+      wrapEl.classList.remove('sc-open');
+      letterEl.classList.remove('sc-visible');
+      textEl.textContent = '';
+    }
+
+    return { isOpen: () => opened, reset };
   }
 
   // --- 6. PhotoPolaroids ---
