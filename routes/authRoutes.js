@@ -25,6 +25,9 @@ router.post('/register', authLimiter, registerRules, validate, authController.po
 router.get('/login', redirectIfAuthenticated, authController.getLogin);
 router.post('/login', authLimiter, loginRules, validate, authController.postLogin);
 
+router.get('/auth/google', authLimiter, redirectIfAuthenticated, authController.startGoogleAuth);
+router.get('/auth/google/callback', authLimiter, authController.googleAuthCallback);
+
 router.post('/logout', authController.logout);
 
 router.get('/forgot-password', authController.getForgotPassword);

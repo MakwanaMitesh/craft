@@ -1,3 +1,4 @@
+const passport = require('passport');
 const User = require('../models/User');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
@@ -145,3 +146,40 @@ exports.postResetPassword = catchAsync(async (req, res) => {
   req.session.flash = { type: 'success', message: 'Password updated. Please log in.' };
   res.redirect('/login');
 });
+
+// --- Google OAuth ---
+// Same "?redirect= carried through" purpose as the plain register/login
+// forms' redirectTo field, just stashed in the session instead of a form
+// field — a redirect to Google and back can't carry an arbitrary query
+// param through as cleanly as a same-site form submission can.
+exports.startGoogleAuth = (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    req.session.flash = { type: 'error', message: 'Google sign-in is not set up yet. Please use email instead.' };
+    return res.redirect('/login');
+  }
+  req.session.oauthRedirect = safeRedirect(req.query.redirect);
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
+};
+
+exports.googleAuthCallback = (req, res, next) => {
+  passport.authenticate('google', { session: false, failureRedirect: '/login' }, async (err, user) => {
+    if (err || !user) {
+      req.session.flash = { type: 'error', message: 'Google sign-in failed. Please try again or use email.' };
+      return res.redirect('/login');
+    }
+    if (user.isBlocked) {
+      req.session.flash = { type: 'error', message: 'Your account has been blocked. Contact support.' };
+      return res.redirect('/login');
+    }
+
+    req.session.userId = user._id;
+    req.session.userName = user.name;
+    req.session.role = user.role;
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    const redirectTo = user.role !== 'admin' && req.session.oauthRedirect;
+    delete req.session.oauthRedirect;
+    res.redirect(redirectTo || (user.role === 'admin' ? '/admin/dashboard' : '/dashboard'));
+  })(req, res, next);
+};

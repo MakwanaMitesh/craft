@@ -8,6 +8,7 @@ const morgan = require('morgan');
 
 const connectDB = require('./config/db');
 const buildSessionMiddleware = require('./config/session');
+const passport = require('./config/passport');
 const injectLocals = require('./middleware/locals');
 const { ensureToken, verifyToken } = require('./middleware/csrf');
 const { generalLimiter } = require('./middleware/rateLimiter');
@@ -87,6 +88,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(buildSessionMiddleware());
+// No app.use(passport.session()) — this app's own session fields
+// (req.session.userId/userName/role) are the only session state used
+// anywhere; passport here is just the Google OAuth handshake (see
+// config/passport.js and routes/authRoutes.js), not a second session layer.
+app.use(passport.initialize());
 app.use(generalLimiter);
 app.use(injectLocals);
 app.use(ensureToken);
